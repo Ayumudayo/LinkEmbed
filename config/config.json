@@ -1,0 +1,12 @@
+{
+  "embed_delay_seconds": 5,
+  "cache_ttl_minutes": 10,
+  "http_timeout_ms": 4000,
+  "http_max_redirects": 5,
+  "http_user_agent": "LinkEbdBot/1.0",
+  "max_concurrency": 4,
+  "rate_per_sec": 2,
+  "max_html_bytes": 8388608,
+  "html_initial_range_bytes": 524288,
+  "html_range_growth_factor": 2.0
+}

@@ -1,0 +1,27 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "x64-debug",
+      "displayName": "x64 Debug",
+      "description": "Builds for x64 with Debug configuration.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/x64-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/x64-debug",
+        "CMAKE_TOOLCHAIN_FILE": "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/vcpkg/scripts/buildsystems/vcpkg.cmake"
+      },
+      "environment": {
+        "VCPKG_BINARY_SOURCES": "clear;files,${sourceDir}/.vcpkg_cache,readwrite;default,readwrite",
+        "VCPKG_FEATURE_FLAGS": "manifests,binarycaching"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "x64-debug",
+      "configurePreset": "x64-debug"
+    }
+  ]
+}

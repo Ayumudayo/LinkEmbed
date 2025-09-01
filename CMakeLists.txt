@@ -1,0 +1,40 @@
+cmake_minimum_required(VERSION 3.22)
+project(LinkEmbed)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# find_package will use the vcpkg toolchain automatically
+find_package(dpp CONFIG REQUIRED)
+find_package(CURL CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(Threads REQUIRED)
+
+add_executable(LinkEmbed
+    src/main.cpp
+    src/core/LinkEmbedHandler.cpp
+    src/core/JobScheduler.cpp
+    src/network/HTMLFetcher.cpp
+    src/parser/MetadataParser.cpp
+    src/cache/MetadataCache.cpp
+    src/utils/Logger.cpp
+    config/Config.cpp
+    src/utils/ThreadPool.cpp
+    src/utils/RateLimiter.cpp
+)
+
+target_include_directories(LinkEmbed PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/config
+)
+
+target_link_libraries(LinkEmbed PRIVATE
+    dpp::dpp
+    CURL::libcurl
+    nlohmann_json::nlohmann_json
+    Threads::Threads
+)
+
+if(WIN32)
+    target_link_libraries(LinkEmbed PRIVATE ws2_32)
+endif()
