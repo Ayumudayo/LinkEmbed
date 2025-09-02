@@ -22,10 +22,10 @@ void Logger::Log(LogLevel level, const std::string& message) {
 
     const char* level_str = "";
     switch (level) {
-        case LogLevel::DEBUG: level_str = "DEBUG"; break;
-        case LogLevel::INFO:  level_str = "INFO";  break;
-        case LogLevel::WARN:  level_str = "WARN";  break;
-        case LogLevel::LOG_ERROR: level_str = "ERROR"; break;
+        case LogLevel::Debug: level_str = "Debug"; break;
+        case LogLevel::Info:  level_str = "Info";  break;
+        case LogLevel::Warn:  level_str = "Warn";  break;
+        case LogLevel::Error: level_str = "Error"; break;
     }
 
     std::cout << std::put_time(&buf, "%Y-%m-%d %X") << " [" << level_str << "] " << message << std::endl;

@@ -4,10 +4,10 @@
 
 namespace LinkEmbed {
     enum class LogLevel {
-        DEBUG,
-        INFO,
-        WARN,
-        LOG_ERROR
+        Debug,
+        Info,
+        Warn,
+        Error
     };
 
     class Logger {
