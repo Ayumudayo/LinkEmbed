@@ -74,7 +74,7 @@ void JobScheduler::Cancel(dpp::snowflake message_id) {
         }
     }
     if (any) {
-        Logger::Log(LogLevel::INFO, "Cancelled job(s) for message ID: " + std::to_string(message_id));
+        Logger::Log(LogLevel::Info, "Cancelled job(s) for message ID: " + std::to_string(message_id));
     }
     cv.notify_all();
 }
