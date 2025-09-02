@@ -11,9 +11,9 @@ namespace LinkEmbed {
         std::string http_user_agent = "LinkEbdBot/1.0";
         int max_concurrency = 4;
         double rate_per_sec = 2.0;
-        size_t max_html_bytes = 8388608; // 8MB 기본 상향
+        size_t max_html_bytes = 8388608; // Default increased to 8MB
         size_t html_initial_range_bytes = 524288; // 512KB
-        double html_range_growth_factor = 2.0; // 단계 확대 배수
+        double html_range_growth_factor = 2.0; // Step growth factor
         std::string bot_token = "YOUR_BOT_TOKEN_HERE";
 
         static Config& GetInstance() {

@@ -62,10 +62,10 @@ void LinkEmbedHandler::MaybeDeleteBotEmbed(dpp::snowflake original_message_id, d
 }
 
 bool LinkEmbedHandler::HasDiscordEmbed(dpp::snowflake channel_id, dpp::snowflake message_id, int timeout_ms) {
-    // std::function 콜백이 복사될 수 있도록 shared_ptr로 감싼다.
+    // Wrap in a shared_ptr so the std::function callback can be copied.
     auto pp = std::make_shared<std::promise<bool>>();
     auto fut = pp->get_future();
-    // dpp::cluster::message_get 시그니처는 (message_id, channel_id) 순서임에 주의.
+    // Note that the dpp::cluster::message_get signature is (message_id, channel_id).
     bot.message_get(message_id, channel_id, [pp](const dpp::confirmation_callback_t& cc) mutable {
         bool has = false;
         if (!cc.is_error()) {
@@ -123,7 +123,7 @@ void LinkEmbedHandler::ProcessUrl(const std::string& url, dpp::snowflake channel
             return;
         }
 
-        // 2. Fetch HTML (Range 기반 단계적 확대)
+        // 2. Fetch HTML (Range-based progressive fetching)
         Logger::Log(LogLevel::DEBUG, "Cache miss. Fetching URL: " + url);
         const auto& cfg = Config::GetInstance();
         size_t cap = static_cast<size_t>(cfg.max_html_bytes);
@@ -150,19 +150,19 @@ void LinkEmbedHandler::ProcessUrl(const std::string& url, dpp::snowflake channel
             Logger::Log(LogLevel::DEBUG, "Metadata incomplete, increasing range to " + std::to_string(attempt) + " bytes for URL: " + url);
         }
 
-        // 4. Cache the result (원본 URL과 최종 URL 모두 캐시)
+        // 4. Cache the result (cache for both original and final URLs)
         metadata_cache.Put(url, *metadata);
         if (!fetch_result.effective_url.empty() && fetch_result.effective_url != url) {
             metadata_cache.Put(fetch_result.effective_url, *metadata);
         }
 
-        // 5. Send embed (보내기 직전 Discord 임베드 재확인)
+        // 5. Send embed (re-check for Discord embed right before sending)
         if (HasDiscordEmbed(channel_id, message_id, 1500)) {
             Logger::Log(LogLevel::INFO, "Discord already attached an embed. Skipping bot embed for: " + url);
             return;
         }
 
-        // Discord 스타일에 가깝게: 제목+설명+썸네일
+        // Closer to Discord style: title+description+thumbnail
         dpp::embed msg_embed;
         msg_embed.set_title(metadata->title);
         msg_embed.set_url(url);
@@ -190,11 +190,12 @@ void LinkEmbedHandler::ProcessUrl(const std::string& url, dpp::snowflake channel
 std::vector<std::string> LinkEmbedHandler::ExtractUrls(const std::string& text) {
     std::vector<std::string> urls;
     // A more robust regex might be needed, but this is a good start.
-    // 기존 이스케이프 문자열에 여분의 따옴표로 인해 구문 오류가 발생함.
-    // raw string literal로 교체해 가독성과 안전성을 확보한다.
+    // The existing escaped string caused a syntax error due to extra quotes.
+    // Replace with a raw string literal to ensure readability and safety.
     std::regex url_regex(R"((https?://[^\s<>"']+))");
     auto words_begin = std::sregex_iterator(text.begin(), text.end(), url_regex);
     auto words_end = std::sregex_iterator();
+
 
     for (std::sregex_iterator i = words_begin; i != words_end; ++i) {
         urls.push_back(i->str());

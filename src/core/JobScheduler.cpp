@@ -26,9 +26,9 @@ void JobScheduler::Run() {
             cv.wait(lock, [this] { return stop_ || !jobs.empty(); });
             if (stop_) break;
         } else {
-            // 가장 이른 실행 시간을 가진 작업을 선택하기 위해 정렬
+            // Sort to select the job with the earliest execution time
             std::sort(jobs.begin(), jobs.end(), [](const ScheduledJob& a, const ScheduledJob& b) {
-                return a.execution_time > b.execution_time; // back()가 가장 이른 작업
+                return a.execution_time > b.execution_time; // back() will be the earliest job
             });
 
             auto now = std::chrono::steady_clock::now();
@@ -37,14 +37,14 @@ void JobScheduler::Run() {
             if (next_job.execution_time <= now) {
                 ScheduledJob job_to_run = std::move(next_job);
                 jobs.pop_back();
-                // 다른 스레드가 Cancel/Schedule 할 수 있도록 잠금 해제 후 실행
+                // Unlock before executing so other threads can Cancel/Schedule
                 lock.unlock();
                 if (!job_to_run.cancelled) {
                     thread_pool.enqueue(job_to_run.job);
                 }
                 lock.lock();
             } else {
-                // 종료 신호를 기다리거나 지정 시각까지 대기
+                // Wait for the stop signal or until the specified time
                 cv.wait_until(lock, next_job.execution_time, [this]{ return stop_; });
             }
         }

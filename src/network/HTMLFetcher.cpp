@@ -21,7 +21,7 @@ size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
     size_t current = ctx->buffer->size();
     if (current >= ctx->max_bytes) {
         ctx->truncated = true;
-        return chunk; // 전송은 계속 받되 버퍼엔 더 이상 저장하지 않음
+        return chunk; // Continue receiving the transfer, but don't store any more in the buffer
     }
     size_t remain = ctx->max_bytes - current;
     size_t to_copy = chunk <= remain ? chunk : remain;
