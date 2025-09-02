@@ -27,6 +27,7 @@ This project is built using `vcpkg` for C++ dependency management.
 - [DPP (D++ Library)](https://dpp.dev/): A lightweight C++ library for interacting with the Discord API.
 - [libcurl](https://curl.se/libcurl/): For making HTTP requests to fetch HTML content.
 - [nlohmann/json](https://github.com/nlohmann/json): For parsing and creating `config.json`.
+- Visual Studio 2022 (Optional / For Windows)
 
 ## Building the Project
 
