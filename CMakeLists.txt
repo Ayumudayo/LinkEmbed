@@ -38,3 +38,23 @@ target_link_libraries(LinkEmbed PRIVATE
 if(WIN32)
     target_link_libraries(LinkEmbed PRIVATE ws2_32)
 endif()
+
+# ===================================================================
+# Compiler flags for Release and Debug builds
+# ===================================================================
+if(MSVC)
+    # MSVC (Visual Studio) compiler settings
+    target_compile_options(LinkEmbed PRIVATE
+        $<$<CONFIG:DEBUG>:/Zi /Od /RTC1>
+        $<$<CONFIG:RELEASE>:/O2 /Oi /Gy /GL>
+    )
+    target_compile_definitions(LinkEmbed PRIVATE
+        $<$<CONFIG:RELEASE>:NDEBUG>
+    )
+else()
+    # Settings for GCC/Clang and other compilers
+    target_compile_options(LinkEmbed PRIVATE
+        $<$<CONFIG:DEBUG>:-g>
+        $<$<CONFIG:RELEASE>:-O3 -DNDEBUG>
+    )
+endif()
