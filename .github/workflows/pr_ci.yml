@@ -2,7 +2,10 @@ name: Pull Request CI
 
 on:
   pull_request:
-    branches: [ "master" ]
+    types: [opened, synchronize, reopened]
+    branches: [ "main", "master" ]
+  # Manual trigger
+  workflow_dispatch:
 
 jobs:
   build-and-test:
