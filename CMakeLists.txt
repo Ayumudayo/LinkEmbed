@@ -10,6 +10,7 @@ find_package(CURL CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(lexbor CONFIG QUIET)
 find_package(Threads REQUIRED)
+find_package(Catch2 CONFIG QUIET)
 
 add_executable(LinkEmbed
     src/main.cpp
@@ -87,3 +88,10 @@ enable_testing()
 # A simple smoke test to ensure the executable runs without crashing.
 # The test passes if the program returns an exit code of 0.
 add_test(NAME RunTest COMMAND LinkEmbed)
+
+# Tests
+if (Catch2_FOUND)
+    add_subdirectory(tests)
+else()
+    message(STATUS "Catch2 not found; tests will be skipped. Install via vcpkg to enable.")
+endif()
