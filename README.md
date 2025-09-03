@@ -37,6 +37,7 @@ This project is built using `vcpkg` for C++ dependency management.
 - Ninja: The build presets use the Ninja build system.
   - **Linux**: Install via your package manager (e.g., `sudo apt install ninja-build` on Debian/Ubuntu).
   - **Windows**: Ninja is included with the "C++ CMake tools for Windows" component in the Visual Studio Installer.
+    - If you don't have VS, you need to install Ninja manually.
 - A modern C++ compiler (e.g., Visual Studio 2022 on Windows, GCC/Clang on Linux)
 - [vcpkg](https://github.com/microsoft/vcpkg)
 
