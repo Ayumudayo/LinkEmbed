@@ -6,10 +6,12 @@ namespace LinkEmbed {
     struct Config {
         int embed_delay_seconds = 5;
         int cache_ttl_minutes = 10;
+        size_t cache_max_size = 1000;
+
         long http_timeout_ms = 4000;
         long http_max_redirects = 5;
         std::string http_user_agent = "LinkEbdBot/1.0";
-        int max_concurrency = 4;
+        int max_concurrency = 0; // 0 means default (half of system cores)
         double rate_per_sec = 2.0;
         size_t max_html_bytes = 8388608; // Default increased to 8MB
         size_t html_initial_range_bytes = 524288; // 512KB
