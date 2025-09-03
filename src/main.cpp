@@ -21,12 +21,19 @@ int main(int argc, char* argv[]) {
     std::filesystem::path config_path = exe_dir / "config" / "config.json";
     const std::string config_path_str = config_path.string();
 
+    // Initialize logger (default level Info until config load)
+    LinkEmbed::Logger::Init(exe_dir.string(), LinkEmbed::LogLevel::Info);
+
     // Initialize global resources
     curl_global_init(CURL_GLOBAL_ALL);
 
     // Load Config
     try {
         LinkEmbed::Config::GetInstance().Load(config_path_str);
+        // Apply configured log level
+        LinkEmbed::Logger::SetMinLevel(
+            LinkEmbed::Logger::FromString(LinkEmbed::Config::GetInstance().log_level)
+        );
         LinkEmbed::Logger::Log(LinkEmbed::LogLevel::Info, "Configuration loaded from: " + config_path_str);
     } catch (const std::runtime_error& e) {
         std::string error_message = e.what();

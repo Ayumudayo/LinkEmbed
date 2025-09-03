@@ -17,6 +17,7 @@ namespace LinkEmbed {
         size_t html_initial_range_bytes = 524288; // 512KB
         double html_range_growth_factor = 2.0; // Step growth factor
         std::string bot_token = "YOUR_BOT_TOKEN_HERE";
+        std::string log_level = "info"; // debug, info, warn, error
 
         static Config& GetInstance() {
             static Config instance;

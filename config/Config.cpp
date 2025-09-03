@@ -25,6 +25,7 @@ void Config::Load(const std::string& path) {
     html_initial_range_bytes = data.value("html_initial_range_bytes", 524288);
     html_range_growth_factor = data.value("html_range_growth_factor", 2.0);
     bot_token = data.value("bot_token", "YOUR_BOT_TOKEN_HERE");
+    log_level = data.value("log_level", "info");
 }
 
 void Config::CreateDefault(const std::string& path_str) {
@@ -48,6 +49,7 @@ void Config::CreateDefault(const std::string& path_str) {
     data["html_initial_range_bytes"] = defaultConfig.html_initial_range_bytes;
     data["html_range_growth_factor"] = defaultConfig.html_range_growth_factor;
     data["bot_token"] = defaultConfig.bot_token;
+    data["log_level"] = defaultConfig.log_level;
 
     std::ofstream o(path);
     if (!o.is_open()) {
