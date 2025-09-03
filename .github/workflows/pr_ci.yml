@@ -1,0 +1,59 @@
+name: Pull Request CI
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup vcpkg
+      uses: actions/checkout@v4
+      with:
+        repository: microsoft/vcpkg
+        path: vcpkg
+
+    - name: Bootstrap vcpkg
+      run: ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+      shell: bash
+      if: runner.os == 'Linux'
+
+    - name: Bootstrap vcpkg (Windows)
+      run: .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
+      shell: cmd
+      if: runner.os == 'Windows'
+
+    - name: Cache vcpkg binaries
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.workspace }}/vcpkg_cache
+        key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
+        restore-keys: |
+          ${{ runner.os }}-vcpkg-
+
+    - name: Configure, Build, and Test (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      env:
+        VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      run: |
+        cmake --preset linux-x64-release
+        cmake --build --preset linux-x64-release
+        ctest --preset linux-x64-release
+
+    - name: Configure, Build, and Test (Windows)
+      if: runner.os == 'Windows'
+      shell: cmd
+      run: |
+        cmake --preset windows-x64-release
+        cmake --build --preset windows-x64-release
+        ctest --preset windows-x64-release

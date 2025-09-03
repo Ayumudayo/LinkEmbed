@@ -58,3 +58,12 @@ else()
         $<$<CONFIG:RELEASE>:-O3 -DNDEBUG>
     )
 endif()
+
+# ===================================================================
+# CTest for build verification
+# ===================================================================
+enable_testing()
+
+# A simple smoke test to ensure the executable runs without crashing.
+# The test passes if the program returns an exit code of 0.
+add_test(NAME RunTest COMMAND LinkEmbed)
