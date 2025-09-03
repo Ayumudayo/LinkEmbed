@@ -1,0 +1,18 @@
+#!/bin/bash
+# Exit immediately if a command exits with a non-zero status.
+set -e
+
+# Get the directory of the script
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+PROJECT_ROOT="$SCRIPT_DIR/.."
+
+# Navigate to the project root
+cd "$PROJECT_ROOT"
+
+echo ">>> Configuring Debug build for linux-x64-debug..."
+cmake --preset linux-x64-debug
+
+echo ">>> Building Debug..."
+cmake --build --preset linux-x64-debug
+
+echo ">>> Build complete. Executable is at: out/build/linux-x64-debug/LinkEmbed"
