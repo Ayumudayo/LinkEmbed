@@ -17,6 +17,7 @@ add_executable(LinkEmbed
     src/core/JobScheduler.cpp
     src/network/HTMLFetcher.cpp
     src/parser/MetadataParser.cpp
+    src/parser/DefaultMetadataParser.cpp
     src/cache/MetadataCache.cpp
     src/utils/Logger.cpp
     src/utils/UrlUtil.cpp

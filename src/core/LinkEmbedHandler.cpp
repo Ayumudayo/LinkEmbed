@@ -18,8 +18,8 @@ struct LinkEmbedHandler::ProcessContext {
     size_t fetch_attempt_bytes = 0;
 };
 
-LinkEmbedHandler::LinkEmbedHandler(dpp::cluster& bot, ThreadPool& pool, HTMLFetcher& fetcher, RateLimiter& limiter, MetadataCache& cache, JobScheduler& scheduler)
-    : bot(bot), thread_pool(pool), html_fetcher_(fetcher), rate_limiter(limiter), metadata_cache(cache), job_scheduler(scheduler) {}
+LinkEmbedHandler::LinkEmbedHandler(dpp::cluster& bot, ThreadPool& pool, IHTMLFetcher& fetcher, IRateLimiter& limiter, IMetadataCache& cache, IMetadataParser& parser, JobScheduler& scheduler)
+    : bot(bot), thread_pool(pool), html_fetcher_(fetcher), rate_limiter(limiter), metadata_cache(cache), parser_(parser), job_scheduler(scheduler) {}
 
 void LinkEmbedHandler::OnMessageCreate(const dpp::message_create_t& event) {
     if (event.msg.author.is_bot()) return;
@@ -96,13 +96,13 @@ void LinkEmbedHandler::ProcessUrl(std::shared_ptr<ProcessContext> ctx) {
     // Avoid dangling: pass a heap-allocated shared_ptr holder via user_data instead of a raw pointer.
     auto* ctx_holder = new std::shared_ptr<ProcessContext>(ctx);
     html_fetcher_.Fetch(ctx->url, ctx->fetch_attempt_bytes, true, static_cast<void*>(ctx_holder),
-        [this](HTMLFetcher::FetchResult result) {
+        [this](FetchResult result) {
             OnFetchComplete(std::move(result));
         }
     );
 }
 
-void LinkEmbedHandler::OnFetchComplete(HTMLFetcher::FetchResult result) {
+void LinkEmbedHandler::OnFetchComplete(FetchResult result) {
     // Reclaim the per-callback heap-allocated shared_ptr holder.
     std::unique_ptr<std::shared_ptr<ProcessContext>> ctx_holder(
         static_cast<std::shared_ptr<ProcessContext>*>(result.user_data)
@@ -111,15 +111,17 @@ void LinkEmbedHandler::OnFetchComplete(HTMLFetcher::FetchResult result) {
     Logger::Log(LogLevel::Debug, "OnFetchComplete called for URL: " + ctx->url);
 
     if (!result.error.empty()) {
-        Logger::Log(LogLevel::Error, "Failed to fetch " + ctx->url + ": " + result.error);
+        Logger::Log(LogLevel::Error, "Failed to fetch " + ctx->url + ": status=" + std::to_string(result.status_code) + ", err=" + result.error);
         return;
     }
 
     // Enqueue the parsing to our thread pool
     Logger::Log(LogLevel::Debug, "Enqueuing parsing to thread pool for URL: " + ctx->url);
     thread_pool.enqueue([this, result = std::move(result), ctx]() mutable {
-        Logger::Log(LogLevel::Debug, "Parsing started in thread pool for URL: " + ctx->url);
-        auto metadata = MetadataParser::Parse(result.content);
+        Logger::Log(LogLevel::Debug, "Parsing started in thread pool for URL: " + ctx->url +
+                                     ", bytes=" + std::to_string(result.content.size()) +
+                                     ", truncated=" + std::string(result.truncated ? "true" : "false"));
+        auto metadata = parser_.Parse(result.content);
 
         if (metadata) {
             // Success, cache and send
@@ -144,7 +146,7 @@ void LinkEmbedHandler::OnFetchComplete(HTMLFetcher::FetchResult result) {
             // Re-fetch with larger size
             auto* next_holder = new std::shared_ptr<ProcessContext>(ctx);
             html_fetcher_.Fetch(ctx->url, ctx->fetch_attempt_bytes, true, static_cast<void*>(next_holder),
-                [this](HTMLFetcher::FetchResult new_result) {
+                [this](FetchResult new_result) {
                     OnFetchComplete(std::move(new_result));
                 }
             );

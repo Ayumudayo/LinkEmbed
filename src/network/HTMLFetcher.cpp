@@ -17,7 +17,7 @@ struct TransferContext {
     std::string buffer;
     size_t max_bytes;
     bool truncated = false;
-    LinkEmbed::HTMLFetcher::Callback callback;
+    LinkEmbed::IHTMLFetcher::Callback callback;
     void* user_data = nullptr;
     char error_buffer[CURL_ERROR_SIZE] = {0};
 };

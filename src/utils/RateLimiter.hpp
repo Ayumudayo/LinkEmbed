@@ -1,12 +1,13 @@
 #pragma once
 #include <chrono>
 #include <mutex>
+#include "../interfaces/IRateLimiter.hpp"
 
 namespace LinkEmbed {
-    class RateLimiter {
+    class RateLimiter : public IRateLimiter {
     public:
         RateLimiter(double rate_per_second);
-        bool TryAcquire();
+        bool TryAcquire() override;
     private:
         double rate;
         double allowance;
