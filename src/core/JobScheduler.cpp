@@ -54,12 +54,27 @@ void JobScheduler::Run() {
 void JobScheduler::Schedule(dpp::snowflake message_id, int delay_seconds, Job job) {
     {
         std::unique_lock<std::mutex> lock(jobs_mutex);
-        jobs.push_back({
-            message_id,
-            std::chrono::steady_clock::now() + std::chrono::seconds(delay_seconds),
-            std::move(job),
-            false
+
+        // Check if a job with this ID already exists.
+        auto it = std::find_if(jobs.begin(), jobs.end(), [message_id](const ScheduledJob& j) {
+            return j.id == message_id;
         });
+
+        if (it != jobs.end()) {
+            // If it exists, update it.
+            it->execution_time = std::chrono::steady_clock::now() + std::chrono::seconds(delay_seconds);
+            it->job = std::move(job);
+            it->cancelled = false; // In case it was cancelled before
+            Logger::Log(LogLevel::Debug, "Updating existing job for message ID: " + std::to_string(message_id));
+        } else {
+            // If it doesn't exist, add a new one.
+            jobs.push_back({
+                message_id,
+                std::chrono::steady_clock::now() + std::chrono::seconds(delay_seconds),
+                std::move(job),
+                false
+            });
+        }
     }
     cv.notify_one();
 }
