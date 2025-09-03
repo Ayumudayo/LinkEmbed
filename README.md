@@ -9,7 +9,7 @@ Aren't you getting annoyed by all those URLs that won't embed?
 - **Automatic URL Detection**: Monitors messages for URLs from any domain.
 - **Rich Metadata Fetching**: Extracts title, description, thumbnail image, and site name from the URL's HTML.
 - **Embed Generation**: Creates Discord embeds using the fetched metadata.
-- **Smart Anti-Spam Logic**:
+- **Anti-Spam Logic**:
     - Waits a few seconds before posting an embed to see if Discord generates its own.
     - If Discord creates an embed, the bot cancels its job.
     - If the original message is edited to remove the URL, the bot's embed is also removed (if already posted).
@@ -33,8 +33,10 @@ This project is built using `vcpkg` for C++ dependency management.
 
 ### Prerequisites
 
-- Git
 - CMake (version 3.22 or higher)
+- Ninja: The build presets use the Ninja build system.
+  - **Linux**: Install via your package manager (e.g., `sudo apt install ninja-build` on Debian/Ubuntu).
+  - **Windows**: Ninja is included with the "C++ CMake tools for Windows" component in the Visual Studio Installer.
 - A modern C++ compiler (e.g., Visual Studio 2022 on Windows, GCC/Clang on Linux)
 - [vcpkg](https://github.com/microsoft/vcpkg)
 
