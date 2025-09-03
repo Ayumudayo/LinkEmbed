@@ -11,6 +11,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(lexbor CONFIG QUIET)
 find_package(Threads REQUIRED)
 find_package(Catch2 CONFIG QUIET)
+find_package(PkgConfig QUIET)
 
 add_executable(LinkEmbed
     src/main.cpp
@@ -49,6 +50,14 @@ endif()
 if (lexbor_FOUND)
     target_link_libraries(LinkEmbed PRIVATE lexbor::lexbor)
 else()
+    # Fallback: try pkg-config (vcpkg often provides a pc file)
+    if (PkgConfig_FOUND)
+        pkg_check_modules(PC_LEXBOR QUIET lexbor)
+    endif()
+    if (PC_LEXBOR_FOUND)
+        target_include_directories(LinkEmbed PRIVATE ${PC_LEXBOR_INCLUDE_DIRS})
+        target_link_libraries(LinkEmbed PRIVATE ${PC_LEXBOR_LIBRARIES})
+    else()
     # Help CMake find lexbor installed via vcpkg even if no CMake config is provided
     # Use vcpkg toolchain variables when available
     find_path(LEXBOR_INCLUDE_DIR NAMES lexbor/html/html.h
@@ -66,6 +75,7 @@ else()
     endif()
     target_include_directories(LinkEmbed PRIVATE ${LEXBOR_INCLUDE_DIR})
     target_link_libraries(LinkEmbed PRIVATE ${LEXBOR_LIBRARY})
+    endif()
 endif()
 
 # ===================================================================
