@@ -172,14 +172,18 @@ void LinkEmbedHandler::SendEmbed(std::shared_ptr<ProcessContext> ctx, const Meta
 
     dpp::message reply_msg(ctx->channel_id, msg_embed);
     reply_msg.set_reference(ctx->message_id);
-    bot.message_create(reply_msg, [this, message_id = ctx->message_id](const dpp::confirmation_callback_t& cc){
+    bot.message_create(reply_msg, [this, message_id = ctx->message_id, url = ctx->url](const dpp::confirmation_callback_t& cc){
         if (cc.is_error()) return;
         try {
             const dpp::message& m = std::get<dpp::message>(cc.value);
             std::lock_guard<std::mutex> lk(bot_embeds_mutex_);
             bot_embeds_[message_id] = m.id;
-        } catch (...) {}
+        } catch (...) {
+            Logger::Log(LogLevel::Error, "Failed to handle confirmation callback for URL: " + url);
+        }
     });
+
+    Logger::Log(LogLevel::Info, "Replied successfully to message with embed for: " + ctx->url);
 }
 
 // This can be slow if it does a DNS lookup. It's also blocking.
