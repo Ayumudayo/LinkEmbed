@@ -81,11 +81,11 @@ The final executable will be located in the `out/build/<preset-name>/` directory
 
 ## Configuration
 
-The bot requires a configuration file located at `config/config.json`.
+The bot requires a configuration file located at `config/config.json` next to the executable (the app looks up `./config/config.json` relative to the binary).
 
-If the file does not exist on first run, the bot will create a default `config.json` for you.
+If the file does not exist on first run, the bot will create a default `config.json` for you and exit. Edit it and restart.
 
-**You must edit this file and set your bot token.**
+**You must edit this file and set your bot token.** You can also control logging verbosity via `log_level`.
 
 ```json
 {
@@ -99,12 +99,20 @@ If the file does not exist on first run, the bot will create a default `config.j
     "http_user_agent": "LinkEbdBot/1.0",
     "max_concurrency": 4,
     "max_html_bytes": 8388608,
-    "rate_per_sec": 2
+    "rate_per_sec": 2,
+    "log_level": "info"
 }
 ```
 - `bot_token`: Your Discord bot's token.
 - `embed_delay_seconds`: Time to wait before posting an embed, to allow Discord to create its own first.
 - `cache_ttl_minutes`: How long to cache website metadata.
+- `log_level`: One of `debug`, `info`, `warn`, `error`.
+
+### Logging
+
+- Console: Logs are printed to stdout with timestamp and level.
+- Files: Logs are also written to `logs/YYYY-MM-DD.log` in the executable directory.
+- Rotation: The logger automatically switches to a new file at midnight (based on local time).
 
 ## Running the Bot
 
