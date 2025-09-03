@@ -21,7 +21,7 @@ namespace LinkEmbed {
             std::chrono::steady_clock::time_point expiry_time;
         };
 
-        void CleanExpired();
+        // NOTE: Expiry is enforced lazily within Get/Put. No explicit sweep is required.
 
         size_t max_size_;
         std::chrono::minutes ttl_;

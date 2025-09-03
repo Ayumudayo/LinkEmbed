@@ -178,6 +178,8 @@ void HTMLFetcher::Run() {
                         transfer_ctx->callback(std::move(result));
                     } catch (const std::exception& e) {
                         Logger::Log(LogLevel::Error, "Exception in fetch callback: " + std::string(e.what()));
+                    } catch (...) {
+                        Logger::Log(LogLevel::Error, "Unknown exception in fetch callback");
                     }
                 }
 

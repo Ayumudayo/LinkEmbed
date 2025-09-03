@@ -19,6 +19,8 @@ add_executable(LinkEmbed
     src/parser/MetadataParser.cpp
     src/cache/MetadataCache.cpp
     src/utils/Logger.cpp
+    src/utils/UrlUtil.cpp
+    src/utils/EmbedBuilder.cpp
     config/Config.cpp
     src/utils/ThreadPool.cpp
     src/utils/RateLimiter.cpp
