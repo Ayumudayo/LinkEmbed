@@ -21,4 +21,7 @@ target_link_libraries(linkembed_tests PRIVATE
     dpp::dpp
 )
 
-add_test(NAME linkembed_tests COMMAND linkembed_tests)
+add_test(NAME linkembed_tests COMMAND linkembed_tests --reporter console --success --durations yes)
+
+# Optional: produce JUnit XML for CI systems
+add_test(NAME linkembed_tests_junit COMMAND linkembed_tests --reporter junit --durations yes --out ${CMAKE_BINARY_DIR}/test-results.xml)
