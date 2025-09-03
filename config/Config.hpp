@@ -10,7 +10,7 @@ namespace LinkEmbed {
 
         long http_timeout_ms = 4000;
         long http_max_redirects = 5;
-        std::string http_user_agent = "LinkEbdBot/1.0";
+        std::string http_user_agent = "LinkEmbedBot/1.0";
         int max_concurrency = 0; // 0 means default (half of system cores)
         double rate_per_sec = 2.0;
         size_t max_html_bytes = 8388608; // Default increased to 8MB

@@ -165,7 +165,12 @@ void LinkEmbedHandler::SendEmbed(std::shared_ptr<ProcessContext> ctx, const Meta
     reply_msg.set_reference(ctx->message_id);
     bot.message_create(reply_msg, [this, message_id = ctx->message_id, url = ctx->url](const dpp::confirmation_callback_t& cc){
         if (cc.is_error()) {
-            Logger::Log(LogLevel::Error, "message_create failed for URL: " + url);
+            auto err = cc.get_error();
+            uint16_t status = cc.http_info.status;
+            Logger::Log(LogLevel::Error, "message_create failed: status=" + std::to_string(status) +
+                                         " code=" + std::to_string(err.code) +
+                                         " msg=" + (!err.human_readable.empty() ? err.human_readable : err.message) +
+                                         " url=" + url);
             return;
         }
         try {

@@ -96,7 +96,7 @@ If the file does not exist on first run, the bot will create a default `config.j
     "html_range_growth_factor": 2,
     "http_max_redirects": 5,
     "http_timeout_ms": 4000,
-    "http_user_agent": "LinkEbdBot/1.0",
+    "http_user_agent": "LinkEmbedBot/1.0",
     "max_concurrency": 4,
     "max_html_bytes": 8388608,
     "rate_per_sec": 2,
