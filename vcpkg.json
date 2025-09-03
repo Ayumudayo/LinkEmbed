@@ -4,7 +4,8 @@
   "dependencies": [
     "dpp",
     "curl",
-    "nlohmann-json"
+    "nlohmann-json",
+    "lexbor"
   ],
   "builtin-baseline": "b1b19307e2d2ec1eefbdb7ea069de7d4bcd31f01"
 }

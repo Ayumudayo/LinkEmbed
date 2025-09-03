@@ -50,8 +50,24 @@ int main(int argc, char* argv[]) {
     }
     const auto& config = LinkEmbed::Config::GetInstance();
 
+    // Determine thread pool size
+    const unsigned int hardware_cores = std::thread::hardware_concurrency();
+    const unsigned int default_threads = std::max(1u, hardware_cores / 2);
+    unsigned int worker_threads = 0;
+
+    if (config.max_concurrency == 0) {
+        worker_threads = default_threads;
+        LinkEmbed::Logger::Log(LinkEmbed::LogLevel::Info, "max_concurrency is 0, defaulting to half of system cores: " + std::to_string(worker_threads));
+    } else if (config.max_concurrency < 0 || config.max_concurrency > hardware_cores) {
+        LinkEmbed::Logger::Log(LinkEmbed::LogLevel::Error, "Configured max_concurrency (" + std::to_string(config.max_concurrency) + ") is invalid. It must be between 1 and the number of system cores (" + std::to_string(hardware_cores) + ").");
+        return 1;
+    } else {
+        worker_threads = config.max_concurrency;
+        LinkEmbed::Logger::Log(LinkEmbed::LogLevel::Info, "Using configured max_concurrency: " + std::to_string(worker_threads));
+    }
+
     // Get Bot Token
-    if (config.bot_token == "YOUR_BOT_TOKEN_HERE" || NULL) {
+    if (config.bot_token == "YOUR_BOT_TOKEN_HERE" || config.bot_token.empty()) {
         LinkEmbed::Logger::Log(LinkEmbed::LogLevel::Error, "Please set your bot_token in " + config_path_str);
         curl_global_cleanup();
         return 1;
@@ -75,11 +91,12 @@ int main(int argc, char* argv[]) {
     });
 
     // Setup Core Components
-    LinkEmbed::ThreadPool thread_pool(config.max_concurrency);
+    LinkEmbed::ThreadPool thread_pool(worker_threads);
+    LinkEmbed::HTMLFetcher html_fetcher;
     LinkEmbed::RateLimiter rate_limiter(config.rate_per_sec);
-    LinkEmbed::MetadataCache metadata_cache(config.cache_ttl_minutes);
+    LinkEmbed::MetadataCache metadata_cache(config.cache_max_size, config.cache_ttl_minutes);
     LinkEmbed::JobScheduler job_scheduler(thread_pool);
-    LinkEmbed::LinkEmbedHandler handler(bot, thread_pool, rate_limiter, metadata_cache, job_scheduler);
+    LinkEmbed::LinkEmbedHandler handler(bot, thread_pool, html_fetcher, rate_limiter, metadata_cache, job_scheduler);
 
     // Register Event Handlers
     bot.on_message_create([&handler](const dpp::message_create_t& event) {

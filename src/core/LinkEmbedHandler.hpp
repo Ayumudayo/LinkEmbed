@@ -4,25 +4,31 @@
 #include "../utils/ThreadPool.hpp"
 #include "../utils/RateLimiter.hpp"
 #include "../cache/MetadataCache.hpp"
+#include "../network/HTMLFetcher.hpp"
 #include <unordered_map>
 #include <mutex>
 
 namespace LinkEmbed {
     class LinkEmbedHandler {
     public:
-        LinkEmbedHandler(dpp::cluster& bot, ThreadPool& pool, RateLimiter& limiter, MetadataCache& cache, JobScheduler& scheduler);
+        LinkEmbedHandler(dpp::cluster& bot, ThreadPool& pool, HTMLFetcher& fetcher, RateLimiter& limiter, MetadataCache& cache, JobScheduler& scheduler);
 
         void OnMessageCreate(const dpp::message_create_t& event);
         void OnMessageUpdate(const dpp::message_update_t& event);
 
     private:
-        void ProcessUrl(const std::string& url, dpp::snowflake channel_id, dpp::snowflake message_id);
+        struct ProcessContext;
+        void ProcessUrl(std::shared_ptr<ProcessContext> ctx);
+        void OnFetchComplete(HTMLFetcher::FetchResult result);
+        void SendEmbed(std::shared_ptr<ProcessContext> ctx, const Metadata& metadata);
+
         std::vector<std::string> ExtractUrls(const std::string& text);
         void MaybeDeleteBotEmbed(dpp::snowflake original_message_id, dpp::snowflake channel_id);
         bool HasDiscordEmbed(dpp::snowflake channel_id, dpp::snowflake message_id, int timeout_ms);
 
         dpp::cluster& bot;
         ThreadPool& thread_pool;
+        HTMLFetcher& html_fetcher_;
         RateLimiter& rate_limiter;
         MetadataCache& metadata_cache;
         JobScheduler& job_scheduler;

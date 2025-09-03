@@ -26,17 +26,17 @@ void JobScheduler::Run() {
             cv.wait(lock, [this] { return stop_ || !jobs.empty(); });
             if (stop_) break;
         } else {
-            // Sort to select the job with the earliest execution time
-            std::sort(jobs.begin(), jobs.end(), [](const ScheduledJob& a, const ScheduledJob& b) {
-                return a.execution_time > b.execution_time; // back() will be the earliest job
+            // Find the job with the earliest execution time
+            auto it = std::min_element(jobs.begin(), jobs.end(), [](const ScheduledJob& a, const ScheduledJob& b) {
+                return a.execution_time < b.execution_time;
             });
 
             auto now = std::chrono::steady_clock::now();
-            ScheduledJob& next_job = jobs.back();
+            ScheduledJob& next_job = *it;
 
             if (next_job.execution_time <= now) {
                 ScheduledJob job_to_run = std::move(next_job);
-                jobs.pop_back();
+                jobs.erase(it);
                 // Unlock before executing so other threads can Cancel/Schedule
                 lock.unlock();
                 if (!job_to_run.cancelled) {

@@ -1,7 +1,24 @@
 ###############################################################################
 # Set default behavior to automatically normalize line endings.
 ###############################################################################
-* text=auto
+# Enforce LF in repo and working tree by default
+* text=auto eol=lf
+
+# Windows-specific files that prefer CRLF in the working tree
+*.sln           text eol=crlf
+*.vcxproj       text eol=crlf
+*.vcproj        text eol=crlf
+*.props         text eol=crlf
+*.targets       text eol=crlf
+*.bat           text eol=crlf
+*.cmd           text eol=crlf
+*.ps1           text eol=crlf
+
+# Always LF for cross-platform scripts
+*.sh            text eol=lf
+*.py            text eol=lf
+*.bash          text eol=lf
+*.zsh           text eol=lf
 
 ###############################################################################
 # Set default behavior for command prompt diff.

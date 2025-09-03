@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(dpp CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(lexbor CONFIG QUIET)
 find_package(Threads REQUIRED)
 
 add_executable(LinkEmbed
@@ -39,6 +40,20 @@ if(WIN32)
     target_link_libraries(LinkEmbed PRIVATE ws2_32)
 endif()
 
+# Note: lexbor vcpkg port may not provide a CMake config target.
+# Try CONFIG first; if not found, manually locate include/lib.
+if (lexbor_FOUND)
+    target_link_libraries(LinkEmbed PRIVATE lexbor::lexbor)
+else()
+    find_path(LEXBOR_INCLUDE_DIR NAMES lexbor/html/html.h)
+    find_library(LEXBOR_LIBRARY NAMES lexbor)
+    if (NOT LEXBOR_INCLUDE_DIR OR NOT LEXBOR_LIBRARY)
+        message(FATAL_ERROR "Could not find lexbor. Install via vcpkg or set CMAKE_PREFIX_PATH/lexbor_DIR")
+    endif()
+    target_include_directories(LinkEmbed PRIVATE ${LEXBOR_INCLUDE_DIR})
+    target_link_libraries(LinkEmbed PRIVATE ${LEXBOR_LIBRARY})
+endif()
+
 # ===================================================================
 # Compiler flags for Release and Debug builds
 # ===================================================================
@@ -48,6 +63,8 @@ if(MSVC)
         $<$<CONFIG:DEBUG>:/Zi /Od /RTC1>
         $<$<CONFIG:RELEASE>:/O2 /Oi /Gy /GL>
     )
+    # Interpret source files as UTF-8
+    target_compile_options(LinkEmbed PRIVATE /utf-8)
     target_compile_definitions(LinkEmbed PRIVATE
         $<$<CONFIG:RELEASE>:NDEBUG>
     )

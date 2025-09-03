@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <optional>
+#include <list>
 #include <unordered_map>
 #include <chrono>
 #include <mutex>
@@ -9,18 +10,23 @@
 namespace LinkEmbed {
     class MetadataCache {
     public:
-        struct CacheEntry {
-            Metadata metadata;
-            std::chrono::steady_clock::time_point expiry_time;
-        };
-
-        MetadataCache(int ttl_minutes);
+        MetadataCache(size_t max_size, int ttl_minutes);
         std::optional<Metadata> Get(const std::string& url);
         void Put(const std::string& url, const Metadata& metadata);
 
     private:
-        std::unordered_map<std::string, CacheEntry> cache;
-        std::chrono::minutes ttl;
-        std::mutex cache_mutex;
+        struct CacheEntry {
+            std::string url;
+            Metadata metadata;
+            std::chrono::steady_clock::time_point expiry_time;
+        };
+
+        void CleanExpired();
+
+        size_t max_size_;
+        std::chrono::minutes ttl_;
+        std::list<CacheEntry> cache_list_;
+        std::unordered_map<std::string, decltype(cache_list_.begin())> cache_map_;
+        std::mutex cache_mutex_;
     };
 }
