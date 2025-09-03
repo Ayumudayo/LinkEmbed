@@ -16,6 +16,15 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Set up MSVC (Windows)
+      if: runner.os == 'Windows'
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Install Ninja (Windows)
+      if: runner.os == 'Windows'
+      run: choco install ninja --no-progress -y
+      shell: powershell
+
     - name: Setup vcpkg
       uses: actions/checkout@v4
       with:
@@ -50,10 +59,42 @@ jobs:
         cmake --build --preset linux-x64-release
         ctest --preset linux-x64-release
 
-    - name: Configure, Build, and Test (Windows)
+    - name: Configure (Windows)
       if: runner.os == 'Windows'
-      shell: cmd
+      shell: bash
+      env:
+        VCPKG_ROOT: ${{ github.workspace }}/vcpkg
       run: |
-        cmake --preset windows-x64-release
-        cmake --build --preset windows-x64-release
-        ctest --preset windows-x64-release
+        set -euo pipefail
+        cmake --preset windows-x64-release \
+          -D CMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+
+    - name: Build (Windows)
+      if: runner.os == 'Windows'
+      shell: bash
+      run: |
+        set -euo pipefail
+        cmake --build --preset windows-x64-release --parallel
+
+    - name: Test (Windows)
+      if: runner.os == 'Windows'
+      shell: bash
+      env:
+        CTEST_OUTPUT_ON_FAILURE: 1
+      run: |
+        set -euo pipefail
+        ctest --preset windows-x64-release --output-on-failure -V
+
+    - name: Smoke run (Windows)
+      if: runner.os == 'Windows'
+      shell: powershell
+      run: |
+        $exe = "build/windows-x64-release/LinkEmbed.exe"
+        if (Test-Path $exe) {
+          & $exe
+          Write-Host "Config dir:"; Get-ChildItem (Split-Path $exe)\config -ErrorAction SilentlyContinue
+          Write-Host "Logs dir:"; Get-ChildItem (Split-Path $exe)\logs -ErrorAction SilentlyContinue
+        } else {
+          Write-Host "Executable not found: $exe"
+          exit 1
+        }

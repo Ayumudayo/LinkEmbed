@@ -49,8 +49,18 @@ endif()
 if (lexbor_FOUND)
     target_link_libraries(LinkEmbed PRIVATE lexbor::lexbor)
 else()
-    find_path(LEXBOR_INCLUDE_DIR NAMES lexbor/html/html.h)
-    find_library(LEXBOR_LIBRARY NAMES lexbor)
+    # Help CMake find lexbor installed via vcpkg even if no CMake config is provided
+    # Use vcpkg toolchain variables when available
+    find_path(LEXBOR_INCLUDE_DIR NAMES lexbor/html/html.h
+        HINTS
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/include
+    )
+    find_library(LEXBOR_LIBRARY NAMES lexbor
+        HINTS
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib
+            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/lib
+    )
     if (NOT LEXBOR_INCLUDE_DIR OR NOT LEXBOR_LIBRARY)
         message(FATAL_ERROR "Could not find lexbor. Install via vcpkg or set CMAKE_PREFIX_PATH/lexbor_DIR")
     endif()
