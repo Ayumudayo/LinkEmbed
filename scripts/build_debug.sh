@@ -15,4 +15,4 @@ cmake --preset linux-x64-debug
 echo ">>> Building Debug..."
 cmake --build --preset linux-x64-debug
 
-echo ">>> Build complete. Executable is at: out/build/linux-x64-debug/LinkEmbed"
+echo ">>> Build complete. Executable is at: build/linux-x64-debug/LinkEmbed"

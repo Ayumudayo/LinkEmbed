@@ -15,4 +15,4 @@ cmake --preset linux-x64-release
 echo ">>> Building Release..."
 cmake --build --preset linux-x64-release
 
-echo ">>> Build complete. Executable is at: out/build/linux-x64-release/LinkEmbed"
+echo ">>> Build complete. Executable is at: build/linux-x64-release/LinkEmbed"
