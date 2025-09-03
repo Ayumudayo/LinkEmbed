@@ -27,6 +27,8 @@ This project is built using `vcpkg` for C++ dependency management.
 - [DPP (D++ Library)](https://dpp.dev/): A lightweight C++ library for interacting with the Discord API.
 - [libcurl](https://curl.se/libcurl/): For making HTTP requests to fetch HTML content.
 - [nlohmann/json](https://github.com/nlohmann/json): For parsing and creating `config.json`.
+- [lexbor](https://github.com/lexbor/lexbor): HTML parsing (title/meta extraction). Installed via vcpkg.
+- [Catch2](https://github.com/catchorg/Catch2) (optional): Unit tests (auto-detected by CMake; installed via vcpkg when present).
 - Visual Studio 2022 (Optional / For Windows)
 
 ## Building the Project
@@ -77,7 +79,30 @@ cmake --build --preset windows-x64-release
 - `linux-x64-release` (Recommended for Linux)
 - `linux-x64-debug`
 
-The final executable will be located in the `out/build/<preset-name>/` directory.
+The final executable will be located in the `build/<preset-name>/` directory.
+
+## Tests
+
+Basic unit tests are available and built only if Catch2 is installed.
+
+Build and run tests using presets:
+
+```bash
+# Windows
+cmake --preset windows-x64-release -D CMAKE_TOOLCHAIN_FILE="C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake"
+cmake --build --preset windows-x64-release
+ctest --preset windows-x64-release --output-on-failure -V
+
+# Linux
+export VCPKG_ROOT=/path/to/vcpkg
+cmake --preset linux-x64-release
+cmake --build --preset linux-x64-release
+ctest --preset linux-x64-release --output-on-failure -V
+```
+
+Notes:
+- Console output shows successes and durations for each test.
+- You can run the test binary directly with custom reporters, e.g. `./linkembed_tests --reporter console --success --durations yes`.
 
 ## Configuration
 
@@ -119,11 +144,11 @@ If the file does not exist on first run, the bot will create a default `config.j
 After building the project, you can run the bot directly from the project root:
 
 ```bash
-# On Windows
-.\build\Release\LinkEmbed.exe
+# On Windows (using CMake preset)
+./build/windows-x64-release/LinkEmbed.exe
 
-# On Linux
-./build/LinkEmbed
+# On Linux (using CMake preset)
+./build/linux-x64-release/LinkEmbed
 ```
 
 ## License
