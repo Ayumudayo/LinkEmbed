@@ -112,7 +112,9 @@ void LinkEmbedHandler::ProcessUrl(const std::string& url, dpp::snowflake channel
             if (!cached_meta->image_url.empty()) {
                 msg_embed.set_thumbnail(cached_meta->image_url);
             }
-            bot.message_create(dpp::message(channel_id, msg_embed), [this, message_id](const dpp::confirmation_callback_t& cc){
+            dpp::message reply_msg(channel_id, msg_embed);
+            reply_msg.set_reference(message_id);
+            bot.message_create(reply_msg, [this, message_id](const dpp::confirmation_callback_t& cc){
                 if (cc.is_error()) return;
                 try {
                     const dpp::message& m = std::get<dpp::message>(cc.value);
@@ -176,7 +178,9 @@ void LinkEmbedHandler::ProcessUrl(const std::string& url, dpp::snowflake channel
             msg_embed.set_thumbnail(metadata->image_url);
         }
 
-        bot.message_create(dpp::message(channel_id, msg_embed), [this, message_id](const dpp::confirmation_callback_t& cc){
+        dpp::message reply_msg(channel_id, msg_embed);
+        reply_msg.set_reference(message_id);
+        bot.message_create(reply_msg, [this, message_id](const dpp::confirmation_callback_t& cc){
             if (cc.is_error()) return;
             try {
                 const dpp::message& m = std::get<dpp::message>(cc.value);
