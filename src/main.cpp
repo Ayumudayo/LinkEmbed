@@ -1,8 +1,8 @@
-
 #include <dpp/dpp.h>
 #include <iostream>
 #include <cstdlib>
 #include <curl/curl.h>
+#include <filesystem>
 #include "../config/Config.hpp"
 #include "core/LinkEmbedHandler.hpp"
 #include "utils/Logger.hpp"
@@ -11,20 +11,29 @@
 #include "cache/MetadataCache.hpp"
 #include "core/JobScheduler.hpp"
 
-int main() {
+int main(int argc, char* argv[]) {
+    if (argc == 0 || argv[0] == nullptr) {
+        LinkEmbed::Logger::Log(LinkEmbed::LogLevel::Error, "Cannot determine executable path.");
+        return 1;
+    }
+    std::filesystem::path exe_path(argv[0]);
+    std::filesystem::path exe_dir = exe_path.parent_path();
+    std::filesystem::path config_path = exe_dir / "config" / "config.json";
+    const std::string config_path_str = config_path.string();
+
     // Initialize global resources
     curl_global_init(CURL_GLOBAL_ALL);
 
     // Load Config
     try {
-        LinkEmbed::Config::GetInstance().Load("config/config.json");
-        LinkEmbed::Logger::Log(LinkEmbed::LogLevel::Info, "Configuration loaded.");
+        LinkEmbed::Config::GetInstance().Load(config_path_str);
+        LinkEmbed::Logger::Log(LinkEmbed::LogLevel::Info, "Configuration loaded from: " + config_path_str);
     } catch (const std::runtime_error& e) {
         std::string error_message = e.what();
         if (error_message.find("Could not open config file") != std::string::npos) {
-            LinkEmbed::Logger::Log(LinkEmbed::LogLevel::Warn, "config.json not found. Creating a default one.");
+            LinkEmbed::Logger::Log(LinkEmbed::LogLevel::Warn, "config.json not found. Creating a default one at: " + config_path_str);
             try {
-                LinkEmbed::Config::GetInstance().CreateDefault("config/config.json");
+                LinkEmbed::Config::GetInstance().CreateDefault(config_path_str);
                 LinkEmbed::Logger::Log(LinkEmbed::LogLevel::Info, "Default config.json created. Please review it, set your bot token, and restart the bot.");
                 curl_global_cleanup();
                 return 0; 
@@ -42,8 +51,8 @@ int main() {
     const auto& config = LinkEmbed::Config::GetInstance();
 
     // Get Bot Token
-    if (config.bot_token == "YOUR_BOT_TOKEN_HERE") {
-        LinkEmbed::Logger::Log(LinkEmbed::LogLevel::Error, "Please set your bot_token in config/config.json");
+    if (config.bot_token == "YOUR_BOT_TOKEN_HERE" || NULL) {
+        LinkEmbed::Logger::Log(LinkEmbed::LogLevel::Error, "Please set your bot_token in " + config_path_str);
         curl_global_cleanup();
         return 1;
     }
