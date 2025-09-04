@@ -15,7 +15,7 @@ jobs:
   build-and-test:
     env:
       VCPKG_ROOT: ${{ github.workspace }}/vcpkg
-      VCPKG_BINARY_SOURCES: clear;gha,readwrite
+      VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/.vcpkg_cache,readwrite
       VCPKG_FEATURE_FLAGS: manifests,binarycaching
     strategy:
       fail-fast: false
@@ -60,6 +60,20 @@ jobs:
       run: .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
       shell: cmd
       if: runner.os == 'Windows'
+
+    - name: Get vcpkg commit
+      id: vcpkg-version
+      shell: bash
+      run: echo "commit=$(git -C vcpkg rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+    - name: Cache vcpkg binaries (files backend)
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.workspace }}/.vcpkg_cache
+        key: ${{ runner.os }}-vcpkg-files-${{ steps.vcpkg-version.outputs.commit }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+        restore-keys: |
+          ${{ runner.os }}-vcpkg-files-${{ steps.vcpkg-version.outputs.commit }}-
+          ${{ runner.os }}-vcpkg-files-
 
     - name: Cache vcpkg downloads
       uses: actions/cache@v4
