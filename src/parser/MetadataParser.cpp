@@ -3,7 +3,7 @@
 #include <lexbor/dom/dom.h>
 #include <optional>
 #include <string>
-#include <cstring> // For strcmp
+#include <cstring> // For strlen
 #include <algorithm> // for std::transform
 
 namespace {

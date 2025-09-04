@@ -12,7 +12,6 @@ void Config::Load(const std::string& path) {
         throw std::runtime_error("Could not open config file: " + path);
     }
     nlohmann::json data = nlohmann::json::parse(f);
-    nlohmann::json original = data; // Keep a copy to detect missing keys
 
     embed_delay_seconds = data.value("embed_delay_seconds", 5);
     cache_ttl_minutes = data.value("cache_ttl_minutes", 60);

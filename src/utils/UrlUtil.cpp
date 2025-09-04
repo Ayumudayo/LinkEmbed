@@ -26,7 +26,7 @@ static inline std::string CleanUrl(std::string s) {
 
 std::vector<std::string> ExtractUrls(const std::string& text) {
     std::vector<std::string> urls;
-    std::regex url_regex(R"((https?://[^\s<>"']+))");
+    static const std::regex url_regex(R"((https?://[^\s<>"']+))");
     auto words_begin = std::sregex_iterator(text.begin(), text.end(), url_regex);
     auto words_end = std::sregex_iterator();
 
