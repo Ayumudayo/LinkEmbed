@@ -79,17 +79,27 @@ if (NOT lexbor_FOUND)
         target_link_libraries(LinkEmbed PRIVATE ${PC_LEXBOR_LIBRARIES})
     else()
     # Help CMake find lexbor installed via vcpkg even if no CMake config is provided
-    # Use vcpkg toolchain variables when available
-    find_path(LEXBOR_INCLUDE_DIR NAMES lexbor/html/html.h
-        HINTS
-            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include
-            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/include
-    )
-    find_library(LEXBOR_LIBRARY NAMES lexbor
-        HINTS
-            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib
-            ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/debug/lib
-    )
+    # Build a robust list of candidate roots and library names
+    set(_LEXLIB_NAMES lexbor lexbor_static)
+    set(_VCPKG_HINT_ROOTS)
+    if (DEFINED VCPKG_INSTALLED_DIR AND DEFINED VCPKG_TARGET_TRIPLET)
+        list(APPEND _VCPKG_HINT_ROOTS "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
+    endif()
+    if (DEFINED VCPKG_TARGET_TRIPLET)
+        list(APPEND _VCPKG_HINT_ROOTS "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}")
+        if (DEFINED VCPKG_ROOT)
+            list(APPEND _VCPKG_HINT_ROOTS "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}")
+        endif()
+    endif()
+    set(_LEXBOR_HINT_INCLUDE_DIRS)
+    set(_LEXBOR_HINT_LIB_DIRS)
+    foreach(_root IN LISTS _VCPKG_HINT_ROOTS)
+        list(APPEND _LEXBOR_HINT_INCLUDE_DIRS "${_root}/include" "${_root}/debug/include")
+        list(APPEND _LEXBOR_HINT_LIB_DIRS "${_root}/lib" "${_root}/debug/lib")
+    endforeach()
+
+    find_path(LEXBOR_INCLUDE_DIR NAMES lexbor/html/html.h HINTS ${_LEXBOR_HINT_INCLUDE_DIRS})
+    find_library(LEXBOR_LIBRARY NAMES ${_LEXLIB_NAMES} HINTS ${_LEXBOR_HINT_LIB_DIRS})
     if (NOT LEXBOR_INCLUDE_DIR OR NOT LEXBOR_LIBRARY)
         message(FATAL_ERROR "Could not find lexbor. Install via vcpkg or set CMAKE_PREFIX_PATH/lexbor_DIR")
     endif()
