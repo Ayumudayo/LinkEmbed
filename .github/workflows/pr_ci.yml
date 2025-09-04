@@ -9,6 +9,10 @@ on:
 
 jobs:
   build-and-test:
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKG_BINARY_SOURCES: clear;gha,readwrite
+      VCPKG_FEATURE_FLAGS: manifests,binarycaching
     strategy:
       fail-fast: false
       matrix:
@@ -53,13 +57,13 @@ jobs:
       shell: cmd
       if: runner.os == 'Windows'
 
-    - name: Cache vcpkg binaries
+    - name: Cache vcpkg downloads
       uses: actions/cache@v4
       with:
-        path: ${{ github.workspace }}/vcpkg_cache
-        key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
+        path: ${{ env.VCPKG_ROOT }}/downloads
+        key: ${{ runner.os }}-vcpkg-downloads-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
         restore-keys: |
-          ${{ runner.os }}-vcpkg-
+          ${{ runner.os }}-vcpkg-downloads-
 
     - name: Configure, Build, and Test (Linux)
       if: runner.os == 'Linux'
