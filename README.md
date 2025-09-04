@@ -38,6 +38,7 @@ This project is built using `vcpkg` for C++ dependency management.
 - CMake (version 3.22 or higher)
 - Ninja: The build presets use the Ninja build system.
   - **Linux**: Install via your package manager (e.g., `sudo apt install ninja-build` on Debian/Ubuntu).
+    - Also install `build-essential` and `pkg-config` on Debian/Ubuntu: `sudo apt install -y build-essential pkg-config`
   - **Windows**: Ninja is included with the "C++ CMake tools for Windows" component in the Visual Studio Installer.
     - If you don't have VS, you need to install Ninja manually.
 - A modern C++ compiler (e.g., Visual Studio 2022 on Windows, GCC/Clang on Linux)
@@ -81,6 +82,24 @@ cmake --build --preset windows-x64-release
 
 The final executable will be located in the `build/<preset-name>/` directory.
 
+### Linux Quick Start (with checks)
+
+```bash
+# 0) Install system packages (Debian/Ubuntu):
+sudo apt update && sudo apt install -y build-essential ninja-build pkg-config
+
+# 1) Set vcpkg path
+export VCPKG_ROOT=/path/to/vcpkg
+
+# 2) Run environment check (optional but recommended)
+./scripts/check_linux_env.sh
+
+# 3) Build via preset helper script
+./scripts/build_release.sh
+```
+
+If the environment check fails, follow the printed hints and retry.
+
 ## Tests
 
 Basic unit tests are available and built only if Catch2 is installed.
@@ -95,6 +114,7 @@ ctest --preset windows-x64-release --output-on-failure -V
 
 # Linux
 export VCPKG_ROOT=/path/to/vcpkg
+./scripts/check_linux_env.sh
 cmake --preset linux-x64-release
 cmake --build --preset linux-x64-release
 ctest --preset linux-x64-release --output-on-failure -V
@@ -150,6 +170,19 @@ After building the project, you can run the bot directly from the project root:
 # On Linux (using CMake preset)
 ./build/linux-x64-release/LinkEmbed
 ```
+
+## Troubleshooting (Linux)
+
+- Missing `VCPKG_ROOT` or toolchain not found
+  - Ensure `export VCPKG_ROOT=/path/to/vcpkg` and that `${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake` exists.
+
+- lexbor not found during configure
+  - Install `pkg-config` (`sudo apt install -y pkg-config`) and then try again.
+  - Check if `pkg-config --cflags --libs lexbor` works; if not, vcpkg may not have generated a `.pc` file — the CMake script now falls back to vcpkg include/lib hints.
+  - Make sure you are using the vcpkg toolchain via the provided presets.
+
+- Old CMake on legacy distros
+  - CMake >= 3.22 is recommended. Consider upgrading (e.g., `sudo snap install cmake --classic`).
 
 ## License
 
