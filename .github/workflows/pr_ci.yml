@@ -34,11 +34,19 @@ jobs:
       with:
         repository: microsoft/vcpkg
         path: vcpkg
+        fetch-depth: 0
 
     - name: Bootstrap vcpkg
       run: ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
       shell: bash
       if: runner.os == 'Linux'
+
+    - name: Install build tools (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ninja-build pkg-config build-essential
+      shell: bash
 
     - name: Bootstrap vcpkg (Windows)
       run: .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
