@@ -81,15 +81,12 @@ void JobScheduler::Schedule(dpp::snowflake message_id, int delay_seconds, Job jo
 
 void JobScheduler::Cancel(dpp::snowflake message_id) {
     std::unique_lock<std::mutex> lock(jobs_mutex);
-    bool any = false;
-    for (auto& job : jobs) {
-        if (job.id == message_id) {
-            job.cancelled = true;
-            any = true;
-        }
-    }
-    if (any) {
-        Logger::Log(LogLevel::Info, "Cancelled job(s) for message ID: " + std::to_string(message_id));
+    auto before = jobs.size();
+    jobs.erase(std::remove_if(jobs.begin(), jobs.end(), [message_id](const ScheduledJob& j){ return j.id == message_id; }), jobs.end());
+    auto removed = before - jobs.size();
+    if (removed > 0) {
+        Logger::Log(LogLevel::Info, "Cancelled job(s) for message ID: " + std::to_string(message_id) +
+                                     ", removed=" + std::to_string(removed));
     }
     cv.notify_all();
 }

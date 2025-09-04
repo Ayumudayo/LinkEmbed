@@ -18,7 +18,7 @@ void Config::Load(const std::string& path) {
     cache_max_size = data.value("cache_max_size", 1000);
     http_timeout_ms = data.value("http_timeout_ms", 4000);
     http_max_redirects = data.value("http_max_redirects", 5);
-    http_user_agent = data.value("http_user_agent", "LinkEbdBot/1.0");
+    http_user_agent = data.value("http_user_agent", "LinkEmbedBot/1.0");
     max_concurrency = data.value("max_concurrency", 0);
     rate_per_sec = data.value("rate_per_sec", 2.0);
     max_html_bytes = data.value("max_html_bytes", 8388608);

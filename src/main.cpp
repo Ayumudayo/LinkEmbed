@@ -10,6 +10,8 @@
 #include "utils/RateLimiter.hpp"
 #include "cache/MetadataCache.hpp"
 #include "core/JobScheduler.hpp"
+#include "parser/DefaultMetadataParser.hpp"
+#include "network/HTMLFetcher.hpp"
 
 int main(int argc, char* argv[]) {
     if (argc == 0 || argv[0] == nullptr) {
@@ -102,8 +104,9 @@ int main(int argc, char* argv[]) {
     LinkEmbed::HTMLFetcher html_fetcher;
     LinkEmbed::RateLimiter rate_limiter(config.rate_per_sec);
     LinkEmbed::MetadataCache metadata_cache(config.cache_max_size, config.cache_ttl_minutes);
+    LinkEmbed::DefaultMetadataParser metadata_parser;
     LinkEmbed::JobScheduler job_scheduler(thread_pool);
-    LinkEmbed::LinkEmbedHandler handler(bot, thread_pool, html_fetcher, rate_limiter, metadata_cache, job_scheduler);
+    LinkEmbed::LinkEmbedHandler handler(bot, thread_pool, html_fetcher, rate_limiter, metadata_cache, metadata_parser, job_scheduler);
 
     // Register Event Handlers
     bot.on_message_create([&handler](const dpp::message_create_t& event) {

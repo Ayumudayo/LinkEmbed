@@ -6,25 +6,15 @@
 #include <mutex>
 #include <thread>
 #include <condition_variable>
+#include "../interfaces/IHTMLFetcher.hpp"
 
 // Forward declare CURLM
 typedef void CURLM;
 
 namespace LinkEmbed {
 
-class HTMLFetcher {
+class HTMLFetcher : public IHTMLFetcher {
 public:
-    struct FetchResult {
-        std::string content;
-        long status_code = 0;
-        std::string error;
-        std::string effective_url;
-        bool truncated = false;
-        void* user_data = nullptr; // To track requests
-    };
-
-    using Callback = std::function<void(FetchResult)>;
-
     HTMLFetcher();
     ~HTMLFetcher();
 
@@ -32,7 +22,7 @@ public:
     HTMLFetcher(const HTMLFetcher&) = delete;
     HTMLFetcher& operator=(const HTMLFetcher&) = delete;
 
-    void Fetch(const std::string& url, size_t attempt_max_bytes, bool use_range, void* user_data, Callback cb);
+    void Fetch(const std::string& url, size_t attempt_max_bytes, bool use_range, void* user_data, Callback cb) override;
 
 private:
     void Run();

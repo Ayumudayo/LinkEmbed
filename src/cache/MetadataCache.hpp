@@ -6,13 +6,14 @@
 #include <chrono>
 #include <mutex>
 #include "../parser/MetadataParser.hpp"
+#include "../interfaces/IMetadataCache.hpp"
 
 namespace LinkEmbed {
-    class MetadataCache {
+    class MetadataCache : public IMetadataCache {
     public:
         MetadataCache(size_t max_size, int ttl_minutes);
-        std::optional<Metadata> Get(const std::string& url);
-        void Put(const std::string& url, const Metadata& metadata);
+        std::optional<Metadata> Get(const std::string& url) override;
+        void Put(const std::string& url, const Metadata& metadata) override;
 
     private:
         struct CacheEntry {
@@ -21,7 +22,7 @@ namespace LinkEmbed {
             std::chrono::steady_clock::time_point expiry_time;
         };
 
-        void CleanExpired();
+        // NOTE: Expiry is enforced lazily within Get/Put. No explicit sweep is required.
 
         size_t max_size_;
         std::chrono::minutes ttl_;

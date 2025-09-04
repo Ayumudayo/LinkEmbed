@@ -10,6 +10,8 @@ find_package(CURL CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(lexbor CONFIG QUIET)
 find_package(Threads REQUIRED)
+find_package(Catch2 CONFIG QUIET)
+find_package(PkgConfig QUIET)
 
 add_executable(LinkEmbed
     src/main.cpp
@@ -17,8 +19,11 @@ add_executable(LinkEmbed
     src/core/JobScheduler.cpp
     src/network/HTMLFetcher.cpp
     src/parser/MetadataParser.cpp
+    src/parser/DefaultMetadataParser.cpp
     src/cache/MetadataCache.cpp
     src/utils/Logger.cpp
+    src/utils/UrlUtil.cpp
+    src/utils/EmbedBuilder.cpp
     config/Config.cpp
     src/utils/ThreadPool.cpp
     src/utils/RateLimiter.cpp
@@ -43,15 +48,64 @@ endif()
 # Note: lexbor vcpkg port may not provide a CMake config target.
 # Try CONFIG first; if not found, manually locate include/lib.
 if (lexbor_FOUND)
-    target_link_libraries(LinkEmbed PRIVATE lexbor::lexbor)
-else()
-    find_path(LEXBOR_INCLUDE_DIR NAMES lexbor/html/html.h)
-    find_library(LEXBOR_LIBRARY NAMES lexbor)
+    # Some distributions/packages expose different CMake target names
+    if (TARGET lexbor::lexbor)
+        target_link_libraries(LinkEmbed PRIVATE lexbor::lexbor)
+    elseif (TARGET lexbor)
+        target_link_libraries(LinkEmbed PRIVATE lexbor)
+    elseif (DEFINED LEXBOR_LIBRARIES OR DEFINED LEXBOR_LIBRARY)
+        # Rarely, the config provides only variables
+        if (DEFINED LEXBOR_INCLUDE_DIRS)
+            target_include_directories(LinkEmbed PRIVATE ${LEXBOR_INCLUDE_DIRS})
+        endif()
+        if (DEFINED LEXBOR_LIBRARIES)
+            target_link_libraries(LinkEmbed PRIVATE ${LEXBOR_LIBRARIES})
+        else()
+            target_link_libraries(LinkEmbed PRIVATE ${LEXBOR_LIBRARY})
+        endif()
+    else()
+        message(WARNING "lexbor was found but no usable CMake target was provided. Falling back to pkg-config/manual discovery.")
+        set(lexbor_FOUND FALSE)
+    endif()
+endif()
+
+if (NOT lexbor_FOUND)
+    # Fallback: try pkg-config (vcpkg often provides a .pc file)
+    if (PkgConfig_FOUND)
+        pkg_check_modules(PC_LEXBOR QUIET lexbor)
+    endif()
+    if (PC_LEXBOR_FOUND)
+        target_include_directories(LinkEmbed PRIVATE ${PC_LEXBOR_INCLUDE_DIRS})
+        target_link_libraries(LinkEmbed PRIVATE ${PC_LEXBOR_LIBRARIES})
+    else()
+    # Help CMake find lexbor installed via vcpkg even if no CMake config is provided
+    # Build a robust list of candidate roots and library names
+    set(_LEXLIB_NAMES lexbor lexbor_static)
+    set(_VCPKG_HINT_ROOTS)
+    if (DEFINED VCPKG_INSTALLED_DIR AND DEFINED VCPKG_TARGET_TRIPLET)
+        list(APPEND _VCPKG_HINT_ROOTS "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}")
+    endif()
+    if (DEFINED VCPKG_TARGET_TRIPLET)
+        list(APPEND _VCPKG_HINT_ROOTS "${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}")
+        if (DEFINED VCPKG_ROOT)
+            list(APPEND _VCPKG_HINT_ROOTS "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}")
+        endif()
+    endif()
+    set(_LEXBOR_HINT_INCLUDE_DIRS)
+    set(_LEXBOR_HINT_LIB_DIRS)
+    foreach(_root IN LISTS _VCPKG_HINT_ROOTS)
+        list(APPEND _LEXBOR_HINT_INCLUDE_DIRS "${_root}/include" "${_root}/debug/include")
+        list(APPEND _LEXBOR_HINT_LIB_DIRS "${_root}/lib" "${_root}/debug/lib")
+    endforeach()
+
+    find_path(LEXBOR_INCLUDE_DIR NAMES lexbor/html/html.h HINTS ${_LEXBOR_HINT_INCLUDE_DIRS})
+    find_library(LEXBOR_LIBRARY NAMES ${_LEXLIB_NAMES} HINTS ${_LEXBOR_HINT_LIB_DIRS})
     if (NOT LEXBOR_INCLUDE_DIR OR NOT LEXBOR_LIBRARY)
         message(FATAL_ERROR "Could not find lexbor. Install via vcpkg or set CMAKE_PREFIX_PATH/lexbor_DIR")
     endif()
     target_include_directories(LinkEmbed PRIVATE ${LEXBOR_INCLUDE_DIR})
     target_link_libraries(LinkEmbed PRIVATE ${LEXBOR_LIBRARY})
+    endif()
 endif()
 
 # ===================================================================
@@ -84,3 +138,10 @@ enable_testing()
 # A simple smoke test to ensure the executable runs without crashing.
 # The test passes if the program returns an exit code of 0.
 add_test(NAME RunTest COMMAND LinkEmbed)
+
+# Tests
+if (Catch2_FOUND)
+    add_subdirectory(tests)
+else()
+    message(STATUS "Catch2 not found; tests will be skipped. Install via vcpkg to enable.")
+endif()

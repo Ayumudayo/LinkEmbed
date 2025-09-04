@@ -2,11 +2,23 @@ name: Pull Request CI
 
 on:
   pull_request:
-    branches: [ "master" ]
+    types: [opened, synchronize, reopened]
+    branches: [ "main", "master" ]
+  # Manual trigger
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
 
 jobs:
   build-and-test:
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/.vcpkg_cache,readwrite
+      VCPKG_FEATURE_FLAGS: manifests,binarycaching
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
 
@@ -16,44 +28,88 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Set up MSVC (Windows)
+      if: runner.os == 'Windows'
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Install Ninja (Windows)
+      if: runner.os == 'Windows'
+      run: choco install ninja --no-progress -y
+      shell: powershell
+
     - name: Setup vcpkg
       uses: actions/checkout@v4
       with:
         repository: microsoft/vcpkg
         path: vcpkg
+        fetch-depth: 0
 
     - name: Bootstrap vcpkg
       run: ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
       shell: bash
       if: runner.os == 'Linux'
 
+    - name: Install build tools (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ninja-build pkg-config build-essential
+      shell: bash
+
     - name: Bootstrap vcpkg (Windows)
       run: .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
       shell: cmd
       if: runner.os == 'Windows'
 
-    - name: Cache vcpkg binaries
+    - name: Get vcpkg commit
+      id: vcpkg-version
+      shell: bash
+      run: echo "commit=$(git -C vcpkg rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+    - name: Cache vcpkg binaries (files backend)
       uses: actions/cache@v4
       with:
-        path: ${{ github.workspace }}/vcpkg_cache
-        key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
+        path: ${{ github.workspace }}/.vcpkg_cache
+        key: ${{ runner.os }}-vcpkg-files-${{ steps.vcpkg-version.outputs.commit }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
         restore-keys: |
-          ${{ runner.os }}-vcpkg-
+          ${{ runner.os }}-vcpkg-files-${{ steps.vcpkg-version.outputs.commit }}-
+          ${{ runner.os }}-vcpkg-files-
+
+    - name: Cache vcpkg downloads
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.VCPKG_ROOT }}/downloads
+        key: ${{ runner.os }}-vcpkg-downloads-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+        restore-keys: |
+          ${{ runner.os }}-vcpkg-downloads-
 
     - name: Configure, Build, and Test (Linux)
       if: runner.os == 'Linux'
       shell: bash
-      env:
-        VCPKG_ROOT: ${{ github.workspace }}/vcpkg
       run: |
         cmake --preset linux-x64-release
         cmake --build --preset linux-x64-release
         ctest --preset linux-x64-release
 
-    - name: Configure, Build, and Test (Windows)
+    - name: Configure (Windows)
       if: runner.os == 'Windows'
-      shell: cmd
+      shell: bash
       run: |
+        set -euo pipefail
         cmake --preset windows-x64-release
-        cmake --build --preset windows-x64-release
-        ctest --preset windows-x64-release
+
+    - name: Build (Windows)
+      if: runner.os == 'Windows'
+      shell: bash
+      run: |
+        set -euo pipefail
+        cmake --build --preset windows-x64-release --parallel
+
+    - name: Test (Windows)
+      if: runner.os == 'Windows'
+      shell: bash
+      env:
+        CTEST_OUTPUT_ON_FAILURE: 1
+      run: |
+        set -euo pipefail
+        ctest --preset windows-x64-release --output-on-failure -V

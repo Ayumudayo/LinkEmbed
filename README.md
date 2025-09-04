@@ -27,6 +27,8 @@ This project is built using `vcpkg` for C++ dependency management.
 - [DPP (D++ Library)](https://dpp.dev/): A lightweight C++ library for interacting with the Discord API.
 - [libcurl](https://curl.se/libcurl/): For making HTTP requests to fetch HTML content.
 - [nlohmann/json](https://github.com/nlohmann/json): For parsing and creating `config.json`.
+- [lexbor](https://github.com/lexbor/lexbor): HTML parsing (title/meta extraction). Installed via vcpkg.
+- [Catch2](https://github.com/catchorg/Catch2) (optional): Unit tests (auto-detected by CMake; installed via vcpkg when present).
 - Visual Studio 2022 (Optional / For Windows)
 
 ## Building the Project
@@ -36,6 +38,7 @@ This project is built using `vcpkg` for C++ dependency management.
 - CMake (version 3.22 or higher)
 - Ninja: The build presets use the Ninja build system.
   - **Linux**: Install via your package manager (e.g., `sudo apt install ninja-build` on Debian/Ubuntu).
+    - Also install `build-essential` and `pkg-config` on Debian/Ubuntu: `sudo apt install -y build-essential pkg-config`
   - **Windows**: Ninja is included with the "C++ CMake tools for Windows" component in the Visual Studio Installer.
     - If you don't have VS, you need to install Ninja manually.
 - A modern C++ compiler (e.g., Visual Studio 2022 on Windows, GCC/Clang on Linux)
@@ -77,15 +80,57 @@ cmake --build --preset windows-x64-release
 - `linux-x64-release` (Recommended for Linux)
 - `linux-x64-debug`
 
-The final executable will be located in the `out/build/<preset-name>/` directory.
+The final executable will be located in the `build/<preset-name>/` directory.
+
+### Linux Quick Start (with checks)
+
+```bash
+# 0) Install system packages (Debian/Ubuntu):
+sudo apt update && sudo apt install -y build-essential ninja-build pkg-config
+
+# 1) Set vcpkg path
+export VCPKG_ROOT=/path/to/vcpkg
+
+# 2) Run environment check (optional but recommended)
+./scripts/check_linux_env.sh
+
+# 3) Build via preset helper script
+./scripts/build_release.sh
+```
+
+If the environment check fails, follow the printed hints and retry.
+
+## Tests
+
+Basic unit tests are available and built only if Catch2 is installed.
+
+Build and run tests using presets:
+
+```bash
+# Windows
+cmake --preset windows-x64-release -D CMAKE_TOOLCHAIN_FILE="C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake"
+cmake --build --preset windows-x64-release
+ctest --preset windows-x64-release --output-on-failure -V
+
+# Linux
+export VCPKG_ROOT=/path/to/vcpkg
+./scripts/check_linux_env.sh
+cmake --preset linux-x64-release
+cmake --build --preset linux-x64-release
+ctest --preset linux-x64-release --output-on-failure -V
+```
+
+Notes:
+- Console output shows successes and durations for each test.
+- You can run the test binary directly with custom reporters, e.g. `./linkembed_tests --reporter console --success --durations yes`.
 
 ## Configuration
 
-The bot requires a configuration file located at `config/config.json`.
+The bot requires a configuration file located at `config/config.json` next to the executable (the app looks up `./config/config.json` relative to the binary).
 
-If the file does not exist on first run, the bot will create a default `config.json` for you.
+If the file does not exist on first run, the bot will create a default `config.json` for you and exit. Edit it and restart.
 
-**You must edit this file and set your bot token.**
+**You must edit this file and set your bot token.** You can also control logging verbosity via `log_level`.
 
 ```json
 {
@@ -96,27 +141,48 @@ If the file does not exist on first run, the bot will create a default `config.j
     "html_range_growth_factor": 2,
     "http_max_redirects": 5,
     "http_timeout_ms": 4000,
-    "http_user_agent": "LinkEbdBot/1.0",
+    "http_user_agent": "LinkEmbedBot/1.0",
     "max_concurrency": 4,
     "max_html_bytes": 8388608,
-    "rate_per_sec": 2
+    "rate_per_sec": 2,
+    "log_level": "info"
 }
 ```
 - `bot_token`: Your Discord bot's token.
 - `embed_delay_seconds`: Time to wait before posting an embed, to allow Discord to create its own first.
 - `cache_ttl_minutes`: How long to cache website metadata.
+- `log_level`: One of `debug`, `info`, `warn`, `error`.
+
+### Logging
+
+- Console: Logs are printed to stdout with timestamp and level.
+- Files: Logs are also written to `logs/YYYY-MM-DD.log` in the executable directory.
+- Rotation: The logger automatically switches to a new file at midnight (based on local time).
 
 ## Running the Bot
 
 After building the project, you can run the bot directly from the project root:
 
 ```bash
-# On Windows
-.\build\Release\LinkEmbed.exe
+# On Windows (using CMake preset)
+./build/windows-x64-release/LinkEmbed.exe
 
-# On Linux
-./build/LinkEmbed
+# On Linux (using CMake preset)
+./build/linux-x64-release/LinkEmbed
 ```
+
+## Troubleshooting (Linux)
+
+- Missing `VCPKG_ROOT` or toolchain not found
+  - Ensure `export VCPKG_ROOT=/path/to/vcpkg` and that `${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake` exists.
+
+- lexbor not found during configure
+  - Install `pkg-config` (`sudo apt install -y pkg-config`) and then try again.
+  - Check if `pkg-config --cflags --libs lexbor` works; if not, vcpkg may not have generated a `.pc` file — the CMake script now falls back to vcpkg include/lib hints.
+  - Make sure you are using the vcpkg toolchain via the provided presets.
+
+- Old CMake on legacy distros
+  - CMake >= 3.22 is recommended. Consider upgrading (e.g., `sudo snap install cmake --classic`).
 
 ## License
 

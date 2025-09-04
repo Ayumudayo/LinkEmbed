@@ -5,6 +5,8 @@
 #include <regex>
 #include <future>
 #include <dpp/dpp.h>
+#include "../utils/UrlUtil.hpp"
+#include "../utils/EmbedBuilder.hpp"
 
 namespace LinkEmbed {
 
@@ -16,8 +18,8 @@ struct LinkEmbedHandler::ProcessContext {
     size_t fetch_attempt_bytes = 0;
 };
 
-LinkEmbedHandler::LinkEmbedHandler(dpp::cluster& bot, ThreadPool& pool, HTMLFetcher& fetcher, RateLimiter& limiter, MetadataCache& cache, JobScheduler& scheduler)
-    : bot(bot), thread_pool(pool), html_fetcher_(fetcher), rate_limiter(limiter), metadata_cache(cache), job_scheduler(scheduler) {}
+LinkEmbedHandler::LinkEmbedHandler(dpp::cluster& bot, ThreadPool& pool, IHTMLFetcher& fetcher, IRateLimiter& limiter, IMetadataCache& cache, IMetadataParser& parser, JobScheduler& scheduler)
+    : bot(bot), thread_pool(pool), html_fetcher_(fetcher), rate_limiter(limiter), metadata_cache(cache), parser_(parser), job_scheduler(scheduler) {}
 
 void LinkEmbedHandler::OnMessageCreate(const dpp::message_create_t& event) {
     if (event.msg.author.is_bot()) return;
@@ -94,13 +96,13 @@ void LinkEmbedHandler::ProcessUrl(std::shared_ptr<ProcessContext> ctx) {
     // Avoid dangling: pass a heap-allocated shared_ptr holder via user_data instead of a raw pointer.
     auto* ctx_holder = new std::shared_ptr<ProcessContext>(ctx);
     html_fetcher_.Fetch(ctx->url, ctx->fetch_attempt_bytes, true, static_cast<void*>(ctx_holder),
-        [this](HTMLFetcher::FetchResult result) {
+        [this](FetchResult result) {
             OnFetchComplete(std::move(result));
         }
     );
 }
 
-void LinkEmbedHandler::OnFetchComplete(HTMLFetcher::FetchResult result) {
+void LinkEmbedHandler::OnFetchComplete(FetchResult result) {
     // Reclaim the per-callback heap-allocated shared_ptr holder.
     std::unique_ptr<std::shared_ptr<ProcessContext>> ctx_holder(
         static_cast<std::shared_ptr<ProcessContext>*>(result.user_data)
@@ -109,15 +111,17 @@ void LinkEmbedHandler::OnFetchComplete(HTMLFetcher::FetchResult result) {
     Logger::Log(LogLevel::Debug, "OnFetchComplete called for URL: " + ctx->url);
 
     if (!result.error.empty()) {
-        Logger::Log(LogLevel::Error, "Failed to fetch " + ctx->url + ": " + result.error);
+        Logger::Log(LogLevel::Error, "Failed to fetch " + ctx->url + ": status=" + std::to_string(result.status_code) + ", err=" + result.error);
         return;
     }
 
     // Enqueue the parsing to our thread pool
     Logger::Log(LogLevel::Debug, "Enqueuing parsing to thread pool for URL: " + ctx->url);
     thread_pool.enqueue([this, result = std::move(result), ctx]() mutable {
-        Logger::Log(LogLevel::Debug, "Parsing started in thread pool for URL: " + ctx->url);
-        auto metadata = MetadataParser::Parse(result.content);
+        Logger::Log(LogLevel::Debug, "Parsing started in thread pool for URL: " + ctx->url +
+                                     ", bytes=" + std::to_string(result.content.size()) +
+                                     ", truncated=" + std::string(result.truncated ? "true" : "false"));
+        auto metadata = parser_.Parse(result.content);
 
         if (metadata) {
             // Success, cache and send
@@ -142,7 +146,7 @@ void LinkEmbedHandler::OnFetchComplete(HTMLFetcher::FetchResult result) {
             // Re-fetch with larger size
             auto* next_holder = new std::shared_ptr<ProcessContext>(ctx);
             html_fetcher_.Fetch(ctx->url, ctx->fetch_attempt_bytes, true, static_cast<void*>(next_holder),
-                [this](HTMLFetcher::FetchResult new_result) {
+                [this](FetchResult new_result) {
                     OnFetchComplete(std::move(new_result));
                 }
             );
@@ -157,23 +161,20 @@ void LinkEmbedHandler::SendEmbed(std::shared_ptr<ProcessContext> ctx, const Meta
         return;
     }
 
-    dpp::embed msg_embed;
-    msg_embed.set_title(metadata.title);
-    msg_embed.set_url(ctx->url);
-    if (!metadata.description.empty()) {
-        msg_embed.set_description(metadata.description);
-    }
-    if (!metadata.site_name.empty()) {
-        msg_embed.set_footer(dpp::embed_footer().set_text(metadata.site_name));
-    }
-    if (!metadata.image_url.empty()) {
-        msg_embed.set_thumbnail(metadata.image_url);
-    }
+    dpp::embed msg_embed = BuildEmbed(metadata, ctx->url);
 
     dpp::message reply_msg(ctx->channel_id, msg_embed);
     reply_msg.set_reference(ctx->message_id);
     bot.message_create(reply_msg, [this, message_id = ctx->message_id, url = ctx->url](const dpp::confirmation_callback_t& cc){
-        if (cc.is_error()) return;
+        if (cc.is_error()) {
+            auto err = cc.get_error();
+            uint16_t status = cc.http_info.status;
+            Logger::Log(LogLevel::Error, "message_create failed: status=" + std::to_string(status) +
+                                         " code=" + std::to_string(err.code) +
+                                         " msg=" + (!err.human_readable.empty() ? err.human_readable : err.message) +
+                                         " url=" + url);
+            return;
+        }
         try {
             const dpp::message& m = std::get<dpp::message>(cc.value);
             std::lock_guard<std::mutex> lk(bot_embeds_mutex_);
@@ -209,37 +210,7 @@ bool LinkEmbedHandler::HasDiscordEmbed(dpp::snowflake channel_id, dpp::snowflake
 }
 
 std::vector<std::string> LinkEmbedHandler::ExtractUrls(const std::string& text) {
-    // For Discord to hyperlink the embed title, embed.url must be a valid absolute URL.
-    // The original regex can include trailing punctuation (e.g., closing parentheses, periods),
-    // which makes Discord consider the URL invalid. Clean trailing punctuation after matching.
-
-    auto clean_url = [](std::string s) {
-        auto rtrim_any = [](std::string& x, const std::string& chars) {
-            while (!x.empty() && chars.find(x.back()) != std::string::npos) x.pop_back();
-        };
-
-        // 1) Strip common trailing punctuation first
-        rtrim_any(s, ")],.!?;:");
-
-        // 2) Fix parenthesis balance: if there are more ')' than '(', drop trailing ')'
-        auto count_char = [](const std::string& x, char c){ return static_cast<int>(std::count(x.begin(), x.end(), c)); };
-        while (!s.empty() && count_char(s, ')') > count_char(s, '(') && s.back() == ')') {
-            s.pop_back();
-        }
-
-        return s;
-    };
-
-    std::vector<std::string> urls;
-    std::regex url_regex(R"((https?://[^\s<>"']+))");
-    auto words_begin = std::sregex_iterator(text.begin(), text.end(), url_regex);
-    auto words_end = std::sregex_iterator();
-
-    for (std::sregex_iterator i = words_begin; i != words_end; ++i) {
-        auto u = clean_url(i->str());
-        if (!u.empty()) urls.push_back(std::move(u));
-    }
-    return urls;
+    return UrlUtil::ExtractUrls(text);
 }
 
 } // namespace LinkEmbed

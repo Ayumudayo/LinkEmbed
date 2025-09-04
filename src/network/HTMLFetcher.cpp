@@ -17,7 +17,7 @@ struct TransferContext {
     std::string buffer;
     size_t max_bytes;
     bool truncated = false;
-    LinkEmbed::HTMLFetcher::Callback callback;
+    LinkEmbed::IHTMLFetcher::Callback callback;
     void* user_data = nullptr;
     char error_buffer[CURL_ERROR_SIZE] = {0};
 };
@@ -178,6 +178,8 @@ void HTMLFetcher::Run() {
                         transfer_ctx->callback(std::move(result));
                     } catch (const std::exception& e) {
                         Logger::Log(LogLevel::Error, "Exception in fetch callback: " + std::string(e.what()));
+                    } catch (...) {
+                        Logger::Log(LogLevel::Error, "Unknown exception in fetch callback");
                     }
                 }
 

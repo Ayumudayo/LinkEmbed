@@ -9,6 +9,11 @@ PROJECT_ROOT="$SCRIPT_DIR/.."
 # Navigate to the project root
 cd "$PROJECT_ROOT"
 
+"$PROJECT_ROOT/scripts/check_linux_env.sh" || {
+  echo ">>> Environment check failed. Please fix the issues above and retry."
+  exit 1
+}
+
 echo ">>> Configuring Debug build for linux-x64-debug..."
 cmake --preset linux-x64-debug
 
