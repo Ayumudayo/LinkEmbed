@@ -7,6 +7,10 @@ on:
   # Manual trigger
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   build-and-test:
     env:
@@ -68,8 +72,6 @@ jobs:
     - name: Configure, Build, and Test (Linux)
       if: runner.os == 'Linux'
       shell: bash
-      env:
-        VCPKG_ROOT: ${{ github.workspace }}/vcpkg
       run: |
         cmake --preset linux-x64-release
         cmake --build --preset linux-x64-release
@@ -78,12 +80,9 @@ jobs:
     - name: Configure (Windows)
       if: runner.os == 'Windows'
       shell: bash
-      env:
-        VCPKG_ROOT: ${{ github.workspace }}/vcpkg
       run: |
         set -euo pipefail
-        cmake --preset windows-x64-release \
-          -D CMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        cmake --preset windows-x64-release
 
     - name: Build (Windows)
       if: runner.os == 'Windows'
