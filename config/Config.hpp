@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <nlohmann/json.hpp>
+#include <vector>
 
 namespace LinkEmbed {
     struct Config {
@@ -18,6 +19,12 @@ namespace LinkEmbed {
         double html_range_growth_factor = 2.0; // Step growth factor
         std::string bot_token = "YOUR_BOT_TOKEN_HERE";
         std::string log_level = "info"; // debug, info, warn, error
+
+        // Image proxy settings (bypass Referer-restricted hosts like dcinside)
+        bool image_proxy_enabled = true; // Whether to use a public image proxy
+        std::string image_proxy_base = "https://images.weserv.nl"; // Proxy base URL
+        std::string image_proxy_query = "w=1200&h=630&fit=inside"; // Extra query params (no crop)
+        std::vector<std::string> image_proxy_hosts = { "dcinside.co.kr" }; // Host substrings to match
 
         static Config& GetInstance() {
             static Config instance;

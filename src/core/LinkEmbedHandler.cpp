@@ -123,7 +123,14 @@ void LinkEmbedHandler::OnFetchComplete(FetchResult result) {
                                      ", truncated=" + std::string(result.truncated ? "true" : "false"));
         auto metadata = parser_.Parse(result.content);
 
-        if (metadata) {
+            if (metadata) {
+                // Normalize image URL against effective page URL to ensure absolute HTTPS
+                if (!metadata->image_url.empty()) {
+                    std::string base = !result.effective_url.empty() ? result.effective_url : ctx->url;
+                    metadata->image_url = UrlUtil::ResolveAgainst(base, metadata->image_url);
+                    // Wrap with public proxy (config-driven) to bypass Referer restrictions (e.g., dcinside)
+                    metadata->image_url = UrlUtil::ProxyImageIfNeeded(metadata->image_url);
+                }
             // Success, cache and send
             metadata_cache.Put(ctx->url, *metadata);
             if (!result.effective_url.empty() && result.effective_url != ctx->url) {
@@ -159,6 +166,12 @@ void LinkEmbedHandler::SendEmbed(std::shared_ptr<ProcessContext> ctx, const Meta
     if (HasDiscordEmbed(ctx->channel_id, ctx->message_id, 1500)) {
         Logger::Log(LogLevel::Info, "Discord already attached an embed. Skipping bot embed for: " + ctx->url);
         return;
+    }
+
+    if (!metadata.image_url.empty()) {
+        Logger::Log(LogLevel::Debug, "Embed image URL: " + metadata.image_url);
+    } else {
+        Logger::Log(LogLevel::Debug, "No image URL extracted for: " + ctx->url);
     }
 
     dpp::embed msg_embed = BuildEmbed(metadata, ctx->url);
