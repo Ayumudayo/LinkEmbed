@@ -28,6 +28,19 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Extract vcpkg builtin baseline
+      id: vcpkg-baseline
+      shell: bash
+      run: |
+        set -euo pipefail
+        # Extract 40-hex builtin-baseline from vcpkg.json
+        baseline=$(grep -oE '"builtin-baseline"\s*:\s*"[0-9a-f]{40}"' vcpkg.json | sed -E 's/.*"([0-9a-f]{40})".*/\1/')
+        if [ -z "${baseline}" ]; then
+          echo "Failed to extract builtin-baseline from vcpkg.json" >&2
+          exit 1
+        fi
+        echo "baseline=${baseline}" >> "$GITHUB_OUTPUT"
+
     - name: Set up MSVC (Windows)
       if: runner.os == 'Windows'
       uses: ilammy/msvc-dev-cmd@v1
@@ -42,6 +55,8 @@ jobs:
       with:
         repository: microsoft/vcpkg
         path: vcpkg
+        # Pin vcpkg to the project's builtin-baseline for reproducibility and cache hits
+        ref: ${{ steps.vcpkg-baseline.outputs.baseline }}
         fetch-depth: 0
 
     - name: Bootstrap vcpkg
@@ -61,18 +76,13 @@ jobs:
       shell: cmd
       if: runner.os == 'Windows'
 
-    - name: Get vcpkg commit
-      id: vcpkg-version
-      shell: bash
-      run: echo "commit=$(git -C vcpkg rev-parse HEAD)" >> $GITHUB_OUTPUT
-
     - name: Cache vcpkg binaries (files backend)
       uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/.vcpkg_cache
-        key: ${{ runner.os }}-vcpkg-files-${{ steps.vcpkg-version.outputs.commit }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+        # Keyed by OS and vcpkg manifest baseline (vcpkg.json). Avoid tying to vcpkg repo HEAD to improve hit rate.
+        key: ${{ runner.os }}-vcpkg-files-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
         restore-keys: |
-          ${{ runner.os }}-vcpkg-files-${{ steps.vcpkg-version.outputs.commit }}-
           ${{ runner.os }}-vcpkg-files-
 
     - name: Cache vcpkg downloads
