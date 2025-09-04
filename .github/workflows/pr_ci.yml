@@ -39,6 +39,7 @@ jobs:
           echo "Failed to extract builtin-baseline from vcpkg.json" >&2
           exit 1
         fi
+        echo "vcpkg builtin-baseline: ${baseline}"
         echo "baseline=${baseline}" >> "$GITHUB_OUTPUT"
 
     - name: Set up MSVC (Windows)
