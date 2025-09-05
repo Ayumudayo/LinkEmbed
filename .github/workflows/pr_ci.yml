@@ -51,6 +51,17 @@ jobs:
       if: runner.os == 'Windows'
       uses: ilammy/msvc-dev-cmd@v1
 
+    # Derive a cache key seed from the MSVC toolset version on Windows.
+    # This avoids repeated vcpkg rebuilds when the VS toolset updates,
+    # and ensures updated binaries get uploaded instead of hitting an old primary key.
+    - name: Compute toolchain cache key (Windows)
+      if: runner.os == 'Windows'
+      shell: bash
+      run: |
+        set -euo pipefail
+        # VCToolsVersion is set by msvc-dev-cmd
+        echo "TOOLCHAIN_KEY=msvc-${VCToolsVersion:-unknown}" >> "$GITHUB_ENV"
+
     - name: Install Ninja (Windows)
       if: runner.os == 'Windows'
       run: choco install ninja --no-progress -y
@@ -94,7 +105,7 @@ jobs:
       with:
         path: ${{ github.workspace }}/.vcpkg_cache
         # Keyed by OS and vcpkg manifest baseline (vcpkg.json). Avoid tying to vcpkg repo HEAD to improve hit rate.
-        key: ${{ runner.os }}-vcpkg-files-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+        key: ${{ runner.os }}-vcpkg-files-${{ env.TOOLCHAIN_KEY }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
         restore-keys: |
           ${{ runner.os }}-vcpkg-files-
 
