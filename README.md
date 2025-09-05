@@ -130,8 +130,6 @@ The bot requires a configuration file located at `config/config.json` next to th
 
 If the file does not exist on first run, the bot will create a default `config.json` for you and exit. Edit it and restart.
 
-When the application adds new config options in future versions, it will non-destructively append any missing keys to your existing `config.json` on startup (and write a `.bak` backup). Your existing values are preserved.
-
 **You must edit this file and set your bot token.** You can also control logging verbosity via `log_level`.
 
 ```json
