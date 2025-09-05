@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.22)
 add_executable(linkembed_tests
     test_url_embed.cpp
     test_core_utils.cpp
+    test_url_resolve.cpp
 )
 
 target_include_directories(linkembed_tests PRIVATE

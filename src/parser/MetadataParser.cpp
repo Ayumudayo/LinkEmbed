@@ -3,7 +3,7 @@
 #include <lexbor/dom/dom.h>
 #include <optional>
 #include <string>
-#include <cstring> // For strcmp
+#include <cstring> // For strlen
 #include <algorithm> // for std::transform
 
 namespace {
@@ -59,8 +59,10 @@ std::optional<Metadata> MetadataParser::Parse(const std::string& html_content) {
         }
     }
 
-    // 2) meta tags: prioritize scanning in the head element
+    // Prepare DOM document ref for collections
     lxb_dom_document_t* dom_doc = lxb_html_document_original_ref(document);
+
+    // 2) meta tags: prioritize scanning in the head element
     lxb_dom_collection_t* col = lxb_dom_collection_make(dom_doc, 32);
     if (col != nullptr) {
         auto* head_el = lxb_html_document_head_element(document);
@@ -83,7 +85,7 @@ std::optional<Metadata> MetadataParser::Parse(const std::string& html_content) {
 
             if (prop == "og:title" && meta.title.empty()) meta.title = content;
             else if (prop == "og:description" && meta.description.empty()) meta.description = content;
-            else if (prop == "og:image" && meta.image_url.empty()) meta.image_url = content;
+            else if ((prop == "og:image" || prop == "og:image:url" || prop == "og:image:secure_url") && meta.image_url.empty()) meta.image_url = content;
             else if (prop == "og:site_name" && meta.site_name.empty()) meta.site_name = content;
             else if (prop == "twitter:title" && meta.title.empty()) meta.title = content;
             else if (prop == "twitter:description" && meta.description.empty()) meta.description = content;

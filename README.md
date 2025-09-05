@@ -153,6 +153,27 @@ If the file does not exist on first run, the bot will create a default `config.j
 - `cache_ttl_minutes`: How long to cache website metadata.
 - `log_level`: One of `debug`, `info`, `warn`, `error`.
 
+### Image Proxy (to bypass Referer restrictions)
+
+Some sites (e.g., DCInside) block direct access to `og:image` when no Referer is present. To work around this without running your own server, the bot supports wrapping target image URLs with a public image proxy.
+
+Additional config keys (default-enabled):
+
+```json
+{
+  "image_proxy_enabled": true,
+  "image_proxy_base": "https://images.weserv.nl",
+  "image_proxy_query": "w=1200&h=630&fit=inside",
+  "image_proxy_hosts": ["dcinside.co.kr"]
+}
+```
+
+When metadata extraction finds an image URL whose host includes any of `image_proxy_hosts` (or whose path contains `viewimage.php`), the bot rewrites it to:
+
+`<image_proxy_base>?url=<percent-encoded-original>&<image_proxy_query>`
+
+You can turn this off by setting `image_proxy_enabled` to `false`.
+
 ### Logging
 
 - Console: Logs are printed to stdout with timestamp and level.
