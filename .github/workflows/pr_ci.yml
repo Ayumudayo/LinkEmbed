@@ -11,6 +11,11 @@ permissions:
   contents: read
   actions: write
 
+# Concurrency to reduce cache key reservation conflicts
+concurrency:
+  group: pr-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     env:
@@ -60,6 +65,13 @@ jobs:
         ref: ${{ steps.vcpkg-baseline.outputs.baseline }}
         fetch-depth: 0
 
+    # On Windows, MSVC setup may override VCPKG_ROOT to the Visual Studio system vcpkg path.
+    # If cache paths point outside the workspace, actions/cache fails path validation.
+    # Force VCPKG_ROOT to the workspace path for consistent caching.
+    - name: Force VCPKG_ROOT to workspace
+      shell: bash
+      run: echo "VCPKG_ROOT=${GITHUB_WORKSPACE}/vcpkg" >> "$GITHUB_ENV"
+
     - name: Bootstrap vcpkg
       run: ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
       shell: bash
@@ -89,7 +101,8 @@ jobs:
     - name: Cache vcpkg downloads
       uses: actions/cache@v4
       with:
-        path: ${{ env.VCPKG_ROOT }}/downloads
+        # Use a workspace-local path to avoid path validation errors
+        path: ${{ github.workspace }}/vcpkg/downloads
         key: ${{ runner.os }}-vcpkg-downloads-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
         restore-keys: |
           ${{ runner.os }}-vcpkg-downloads-
