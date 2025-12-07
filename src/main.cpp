@@ -26,8 +26,12 @@ int main(int argc, char* argv[]) {
     // Initialize logger (default level Info until config load)
     LinkEmbed::Logger::Init(exe_dir.string(), LinkEmbed::LogLevel::Info);
 
-    // Initialize global resources
-    curl_global_init(CURL_GLOBAL_ALL);
+    // Initialize global resources - RAII wrapper for curl_global_init/cleanup
+    struct CurlGlobal {
+        CurlGlobal() { curl_global_init(CURL_GLOBAL_ALL); }
+        ~CurlGlobal() { curl_global_cleanup(); }
+    };
+    CurlGlobal curl_global;
 
     // Load Config
     try {
@@ -44,16 +48,13 @@ int main(int argc, char* argv[]) {
             try {
                 LinkEmbed::Config::GetInstance().CreateDefault(config_path_str);
                 LinkEmbed::Logger::Log(LinkEmbed::LogLevel::Info, "Default config.json created. Please review it, set your bot token, and restart the bot.");
-                curl_global_cleanup();
                 return 0; 
             } catch (const std::exception& create_e) {
                 LinkEmbed::Logger::Log(LinkEmbed::LogLevel::Error, "Failed to create default config: " + std::string(create_e.what()));
-                curl_global_cleanup();
                 return 1;
             }
         } else {
             LinkEmbed::Logger::Log(LinkEmbed::LogLevel::Error, "Failed to load config: " + error_message);
-            curl_global_cleanup();
             return 1;
         }
     }
@@ -78,7 +79,6 @@ int main(int argc, char* argv[]) {
     // Get Bot Token
     if (config.bot_token == "YOUR_BOT_TOKEN_HERE" || config.bot_token.empty()) {
         LinkEmbed::Logger::Log(LinkEmbed::LogLevel::Error, "Please set your bot_token in " + config_path_str);
-        curl_global_cleanup();
         return 1;
     }
 
@@ -103,7 +103,7 @@ int main(int argc, char* argv[]) {
     LinkEmbed::ThreadPool thread_pool(worker_threads);
     LinkEmbed::HTMLFetcher html_fetcher;
     LinkEmbed::RateLimiter rate_limiter(config.rate_per_sec);
-    LinkEmbed::MetadataCache metadata_cache(config.cache_max_size, config.cache_ttl_minutes);
+    LinkEmbed::MetadataCache metadata_cache(config.cache_max_size, config.cache_ttl_minutes, config.cache_max_bytes);
     LinkEmbed::DefaultMetadataParser metadata_parser;
     LinkEmbed::JobScheduler job_scheduler(thread_pool);
     LinkEmbed::LinkEmbedHandler handler(bot, thread_pool, html_fetcher, rate_limiter, metadata_cache, metadata_parser, job_scheduler);
@@ -131,11 +131,8 @@ int main(int argc, char* argv[]) {
         bot.start(dpp::st_wait);
     } catch (const dpp::exception& e) {
         LinkEmbed::Logger::Log(LinkEmbed::LogLevel::Error, "DPP Exception: " + std::string(e.what()));
-        curl_global_cleanup();
         return 1;
     }
 
-    // Cleanup global resources
-    curl_global_cleanup();
     return 0;
 }

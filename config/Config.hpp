@@ -8,6 +8,7 @@ namespace LinkEmbed {
         int embed_delay_seconds = 5;
         int cache_ttl_minutes = 10;
         size_t cache_max_size = 1000;
+        size_t cache_max_bytes = 33554432; // ~32MB
 
         long http_timeout_ms = 4000;
         long http_max_redirects = 5;

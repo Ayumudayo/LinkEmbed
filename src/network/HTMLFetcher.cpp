@@ -9,6 +9,8 @@
 #include <iostream>
 #include "../../config/Config.hpp"
 #include "../utils/Logger.hpp"
+#include <map>
+#include <memory>
 
 namespace {
 
@@ -122,6 +124,10 @@ void HTMLFetcher::Run() {
     Logger::Log(LogLevel::Debug, "HTMLFetcher worker thread started.");
     int still_running = 0;
 
+    // Map to manage lifetime of TransferContexts associated with running handles
+    // Key: CURL* easy_handle, Value: unique_ptr to TransferContext
+    std::map<CURL*, std::unique_ptr<TransferContext>> context_map;
+
     while (!stop_) {
         std::vector<Request> current_requests;
         {
@@ -132,13 +138,18 @@ void HTMLFetcher::Run() {
         }
 
         for (const auto& req : current_requests) {
-            auto* transfer_ctx = new TransferContext{ "", req.max_bytes, false, req.callback, req.user_data };
-            CURL* easy_handle = CreateEasyHandle(req.url, req.max_bytes, req.use_range, transfer_ctx);
+            auto transfer_ctx = std::make_unique<TransferContext>();
+            transfer_ctx->max_bytes = req.max_bytes;
+            transfer_ctx->callback = req.callback;
+            transfer_ctx->user_data = req.user_data;
+
+            CURL* easy_handle = CreateEasyHandle(req.url, req.max_bytes, req.use_range, transfer_ctx.get());
             if (easy_handle) {
                 curl_multi_add_handle(multi_handle_, easy_handle);
+                context_map[easy_handle] = std::move(transfer_ctx);
                 Logger::Log(LogLevel::Debug, "Added easy handle for URL: " + req.url);
             } else {
-                delete transfer_ctx;
+                // transfer_ctx goes out of scope and is deleted automatically
                 Logger::Log(LogLevel::Error, "Failed to create cURL easy handle for: " + req.url);
             }
         }
@@ -152,40 +163,47 @@ void HTMLFetcher::Run() {
             if (msg->msg == CURLMSG_DONE) {
                 Logger::Log(LogLevel::Debug, "CURLMSG_DONE received.");
                 CURL* easy_handle = msg->easy_handle;
-                TransferContext* transfer_ctx = nullptr;
-                curl_easy_getinfo(easy_handle, CURLINFO_PRIVATE, &transfer_ctx);
-
-                FetchResult result;
-                result.user_data = transfer_ctx->user_data;
-                result.content = std::move(transfer_ctx->buffer);
-                result.truncated = transfer_ctx->truncated;
-
-                if (msg->data.result == CURLE_OK) {
-                    curl_easy_getinfo(easy_handle, CURLINFO_RESPONSE_CODE, &result.status_code);
-                    char* eff_url = nullptr;
-                    curl_easy_getinfo(easy_handle, CURLINFO_EFFECTIVE_URL, &eff_url);
-                    if (eff_url) result.effective_url = eff_url;
-                } else {
-                    result.error = transfer_ctx->error_buffer;
-                    if (result.error.empty()) {
-                        result.error = curl_easy_strerror(msg->data.result);
-                    }
-                }
                 
-                // Execute callback
-                if (transfer_ctx->callback) {
-                    try {
-                        transfer_ctx->callback(std::move(result));
-                    } catch (const std::exception& e) {
-                        Logger::Log(LogLevel::Error, "Exception in fetch callback: " + std::string(e.what()));
-                    } catch (...) {
-                        Logger::Log(LogLevel::Error, "Unknown exception in fetch callback");
-                    }
-                }
+                auto it = context_map.find(easy_handle);
+                if (it != context_map.end()) {
+                    TransferContext* transfer_ctx = it->second.get();
 
-                curl_multi_remove_handle(multi_handle_, easy_handle);
-                curl_easy_cleanup(easy_handle);
-                delete transfer_ctx;
+                    FetchResult result;
+                    result.user_data = transfer_ctx->user_data;
+                    result.content = std::move(transfer_ctx->buffer);
+                    result.truncated = transfer_ctx->truncated;
+
+                    if (msg->data.result == CURLE_OK) {
+                        curl_easy_getinfo(easy_handle, CURLINFO_RESPONSE_CODE, &result.status_code);
+                        char* eff_url = nullptr;
+                        curl_easy_getinfo(easy_handle, CURLINFO_EFFECTIVE_URL, &eff_url);
+                        if (eff_url) result.effective_url = eff_url;
+                    } else {
+                        result.error = transfer_ctx->error_buffer;
+                        if (result.error.empty()) {
+                            result.error = curl_easy_strerror(msg->data.result);
+                        }
+                    }
+                    
+                    // Execute callback
+                    if (transfer_ctx->callback) {
+                        try {
+                            transfer_ctx->callback(std::move(result));
+                        } catch (const std::exception& e) {
+                            Logger::Log(LogLevel::Error, "Exception in fetch callback: " + std::string(e.what()));
+                        } catch (...) {
+                            Logger::Log(LogLevel::Error, "Unknown exception in fetch callback");
+                        }
+                    }
+
+                    curl_multi_remove_handle(multi_handle_, easy_handle);
+                    curl_easy_cleanup(easy_handle);
+                    context_map.erase(it); // context deleted here
+                } else {
+                     // Should not happen if logic is correct, but safe fallback to cleanup handle
+                     curl_multi_remove_handle(multi_handle_, easy_handle);
+                     curl_easy_cleanup(easy_handle);
+                }
             }
         }
 

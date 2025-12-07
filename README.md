@@ -16,7 +16,7 @@ Aren't you getting annoyed by all those URLs that won't embed?
 - **Performance & Scalability**:
     - Utilizes a thread pool for concurrent metadata fetching.
     - Built-in rate limiting to avoid being blocked by target websites.
-    - In-memory caching for frequently linked URLs to provide instant embeds and reduce fetching.
+    - In-memory caching for frequently linked URLs (LRU) with TTL and memory budgets to prevent runaway growth.
 
 
 
@@ -136,6 +136,8 @@ If the file does not exist on first run, the bot will create a default `config.j
 {
     "bot_token": "YOUR_BOT_TOKEN_HERE",
     "cache_ttl_minutes": 10,
+    "cache_max_size": 1000,
+    "cache_max_bytes": 33554432,
     "embed_delay_seconds": 5,
     "html_initial_range_bytes": 524288,
     "html_range_growth_factor": 2,
@@ -151,6 +153,8 @@ If the file does not exist on first run, the bot will create a default `config.j
 - `bot_token`: Your Discord bot's token.
 - `embed_delay_seconds`: Time to wait before posting an embed, to allow Discord to create its own first.
 - `cache_ttl_minutes`: How long to cache website metadata.
+- `cache_max_size`: Maximum number of cache entries.
+- `cache_max_bytes`: Estimated memory budget in bytes for cached metadata.
 - `log_level`: One of `debug`, `info`, `warn`, `error`.
 
 ### Image Proxy (to bypass Referer restrictions)

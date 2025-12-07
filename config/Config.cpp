@@ -16,6 +16,7 @@ void Config::Load(const std::string& path) {
     embed_delay_seconds = data.value("embed_delay_seconds", 5);
     cache_ttl_minutes = data.value("cache_ttl_minutes", 60);
     cache_max_size = data.value("cache_max_size", 1000);
+    cache_max_bytes = data.value("cache_max_bytes", static_cast<size_t>(33554432));
     http_timeout_ms = data.value("http_timeout_ms", 4000);
     http_max_redirects = data.value("http_max_redirects", 5);
     http_user_agent = data.value("http_user_agent", "LinkEmbedBot/1.0");
@@ -51,6 +52,7 @@ void Config::Load(const std::string& path) {
     ensure_key("embed_delay_seconds", embed_delay_seconds);
     ensure_key("cache_ttl_minutes", cache_ttl_minutes);
     ensure_key("cache_max_size", cache_max_size);
+    ensure_key("cache_max_bytes", cache_max_bytes);
     ensure_key("http_timeout_ms", http_timeout_ms);
     ensure_key("http_max_redirects", http_max_redirects);
     ensure_key("http_user_agent", http_user_agent);
@@ -97,6 +99,7 @@ void Config::CreateDefault(const std::string& path_str) {
     data["embed_delay_seconds"] = defaultConfig.embed_delay_seconds;
     data["cache_ttl_minutes"] = defaultConfig.cache_ttl_minutes;
     data["cache_max_size"] = defaultConfig.cache_max_size;
+    data["cache_max_bytes"] = defaultConfig.cache_max_bytes;
     data["http_timeout_ms"] = defaultConfig.http_timeout_ms;
     data["http_max_redirects"] = defaultConfig.http_max_redirects;
     data["http_user_agent"] = defaultConfig.http_user_agent;

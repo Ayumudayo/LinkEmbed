@@ -15,7 +15,7 @@ TEST_CASE("RateLimiter basic token bucket behavior") {
 }
 
 TEST_CASE("MetadataCache LRU eviction") {
-    MetadataCache cache(1, /*ttl_minutes=*/10);
+    MetadataCache cache(1, /*ttl_minutes=*/10, /*max_bytes=*/256);
     Metadata a; a.title = "A";
     Metadata b; b.title = "B";
     cache.Put("http://a", a);
@@ -27,3 +27,28 @@ TEST_CASE("MetadataCache LRU eviction") {
     CHECK(gb->title == "B");
 }
 
+TEST_CASE("MetadataCache byte budget enforcement") {
+    MetadataCache cache(10, /*ttl_minutes=*/10, /*max_bytes=*/60);
+
+    Metadata small;
+    small.description = std::string(20, 's');
+    cache.Put("http://s1", small);
+    cache.Put("http://s2", small);
+    REQUIRE(cache.Get("http://s1").has_value());
+    REQUIRE(cache.Get("http://s2").has_value());
+
+    Metadata large;
+    large.description = std::string(80, 'l');
+    cache.Put("http://large", large);
+    CHECK_FALSE(cache.Get("http://large").has_value());
+
+    Metadata medium;
+    medium.description = std::string(30, 'm');
+    cache.Put("http://s3", medium);
+
+    CHECK_FALSE(cache.Get("http://s1").has_value());
+    CHECK_FALSE(cache.Get("http://s2").has_value());
+    auto stored = cache.Get("http://s3");
+    REQUIRE(stored.has_value());
+    CHECK(stored->description == std::string(30, 'm'));
+}

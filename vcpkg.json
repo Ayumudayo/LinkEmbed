@@ -3,7 +3,13 @@
   "version-string": "1.0.0",
   "dependencies": [
     "dpp",
-    "curl",
+    {
+      "name": "curl",
+      "default-features": false,
+      "features": [
+        "ssl"
+      ]
+    },
     "nlohmann-json",
     "lexbor",
     "catch2"
