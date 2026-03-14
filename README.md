@@ -32,15 +32,23 @@ Rust Discord bot that watches messages for URLs, waits briefly for Discord's nat
 
 ## Requirements
 
-- Rust toolchain
+- Rust toolchain via `rustup`
 - Cargo
 
 Install Rust with [rustup](https://rustup.rs/).
+
+Do not rely on an old distro-packaged `cargo`/`rustc`. This project tracks the stable Rust toolchain via `rust-toolchain.toml`.
 
 ## Build
 
 ```bash
 cargo build --release
+```
+
+or:
+
+```bash
+./scripts/build_release.sh
 ```
 
 ## Run
@@ -95,8 +103,11 @@ Notes:
 `ecosystem.config.js` points to the Rust release binary:
 
 ```bash
-pm2 start ecosystem.config.js
+./scripts/pm2_start.sh
+./scripts/pm2_restart.sh
 ```
+
+These scripts do not build the project. Build first, then start or restart PM2.
 
 ## CI
 
