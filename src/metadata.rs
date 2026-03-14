@@ -14,12 +14,14 @@ pub fn parse_metadata(html: &str) -> Option<Metadata> {
     let mut metadata = Metadata::default();
     let mut fallback_title = String::new();
 
-    if let Some(mut titles) = dom.query_selector("title")
-        && let Some(handle) = titles.next()
-        && let Some(node) = handle.get(parser)
-        && let Some(tag) = node.as_tag()
-    {
-        fallback_title = tag.inner_text(parser).trim().to_string();
+    if let Some(mut titles) = dom.query_selector("title") {
+        if let Some(handle) = titles.next() {
+            if let Some(node) = handle.get(parser) {
+                if let Some(tag) = node.as_tag() {
+                    fallback_title = tag.inner_text(parser).trim().to_string();
+                }
+            }
+        }
     }
 
     if let Some(tags) = dom.query_selector("meta") {

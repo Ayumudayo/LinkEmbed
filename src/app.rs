@@ -242,10 +242,10 @@ impl App {
     }
 
     fn cancel_job(&self, message_id: MessageId) {
-        if let Ok(mut scheduled_jobs) = self.inner.scheduled_jobs.lock()
-            && let Some(existing) = scheduled_jobs.remove(&message_id)
-        {
-            existing.handle.abort();
+        if let Ok(mut scheduled_jobs) = self.inner.scheduled_jobs.lock() {
+            if let Some(existing) = scheduled_jobs.remove(&message_id) {
+                existing.handle.abort();
+            }
         }
     }
 
@@ -254,11 +254,11 @@ impl App {
             return false;
         };
 
-        if let Some(current) = scheduled_jobs.get(&message_id)
-            && current.token == token
-        {
-            scheduled_jobs.remove(&message_id);
-            return true;
+        if let Some(current) = scheduled_jobs.get(&message_id) {
+            if current.token == token {
+                scheduled_jobs.remove(&message_id);
+                return true;
+            }
         }
 
         false
@@ -532,13 +532,13 @@ impl App {
                 _ => None,
             });
 
-        if let Some(reply_id) = should_delete
-            && let Err(error) = channel_id.delete_message(http.as_ref(), reply_id).await
-        {
-            self.inner.logger.log(
-                LogLevel::Warn,
-                format!("Failed to delete superseded bot reply for {original_message_id}: {error}"),
-            );
+        if let Some(reply_id) = should_delete {
+            if let Err(error) = channel_id.delete_message(http.as_ref(), reply_id).await {
+                self.inner.logger.log(
+                    LogLevel::Warn,
+                    format!("Failed to delete superseded bot reply for {original_message_id}: {error}"),
+                );
+            }
         }
     }
 
