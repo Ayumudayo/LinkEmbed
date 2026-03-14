@@ -86,22 +86,47 @@ declare -a PROJECT_DIRS=()
 
 append_unique() {
   local value="$1"
+  value="$(expand_path "$value")"
   [[ -z "$value" ]] && return 0
   local existing
   for existing in "${CANDIDATE_DIRS[@]:-}"; do
     [[ "$existing" == "$value" ]] && return 0
   done
   CANDIDATE_DIRS+=("$value")
+  return 0
 }
 
 append_existing_shell_file() {
   local value="$1"
-  [[ -f "$value" ]] && SHELL_FILES+=("$value")
+  value="$(expand_path "$value")"
+  if [[ -f "$value" ]]; then
+    SHELL_FILES+=("$value")
+  fi
+  return 0
 }
 
 append_project_dir() {
   local value="$1"
-  [[ -e "$value" ]] && PROJECT_DIRS+=("$value")
+  value="$(expand_path "$value")"
+  if [[ -e "$value" ]]; then
+    PROJECT_DIRS+=("$value")
+  fi
+  return 0
+}
+
+expand_path() {
+  local value="$1"
+  case "$value" in
+    "~")
+      printf '%s\n' "$HOME"
+      ;;
+    "~/"*)
+      printf '%s\n' "$HOME/${value#~/}"
+      ;;
+    *)
+      printf '%s\n' "$value"
+      ;;
+  esac
 }
 
 if [[ -n "${VCPKG_ROOT:-}" ]]; then
