@@ -140,6 +140,14 @@ rm -rf cmake config scripts tests
 
 Only do this if you still have those legacy directories on the Linux host.
 
+If you want a guided cleanup first, use:
+
+```bash
+./scripts/remove_vcpkg_linux.sh
+./scripts/remove_vcpkg_linux.sh --apply
+./scripts/remove_vcpkg_linux.sh --apply --purge-shell
+```
+
 ### 4. Build and start the Rust bot
 
 ```bash
