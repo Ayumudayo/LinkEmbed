@@ -1,7 +1,7 @@
 module.exports = {
   apps : [{
     name   : "LinkEmbed-Bot",
-    script : "./build/linux-x64-release/LinkEmbed",
+    script : "./target/release/linkembed",
     cwd    : __dirname,
     autorestart: true,
     watch  : false,

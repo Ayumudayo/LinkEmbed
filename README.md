@@ -1,170 +1,82 @@
-# LinkEmbed Bot
+# LinkEmbed
 
-A C++ Discord bot that automatically detects URLs in messages and replaces them with rich metadata embeds, similar to how Discord handles links from major sites.
+Rust Discord bot that watches messages for URLs, waits briefly for Discord's native embed, and only posts its own fallback preview when Discord does not.
 
-Aren't you getting annoyed by all those URLs that won't embed?
+## Goals
 
-## Features
+- Follow Discord's native link card layout as closely as Discord custom embeds allow.
+- Avoid duplicate previews by waiting before sending and deleting the bot preview if Discord later attaches its own embed.
+- Work on as many sites as practical with plain HTTP metadata extraction.
+- Keep deployment small and simple with a single Rust binary.
 
-- **Automatic URL Detection**: Monitors messages for URLs from any domain.
-- **Rich Metadata Fetching**: Extracts title, description, thumbnail image, and site name from the URL's HTML.
-- **Embed Generation**: Creates Discord embeds using the fetched metadata.
-- **Anti-Spam Logic**:
-    - Waits a few seconds before posting an embed to see if Discord generates its own.
-    - If Discord creates an embed, the bot cancels its job.
-    - If the original message is edited to remove the URL, the bot's embed is also removed (if already posted).
-- **Performance & Scalability**:
-    - Utilizes a thread pool for concurrent metadata fetching.
-    - Built-in rate limiting to avoid being blocked by target websites.
-    - In-memory caching for frequently linked URLs (LRU) with TTL and memory budgets to prevent runaway growth.
+## Current Behavior
 
+- Detects `http://` and `https://` URLs in new messages.
+- Waits `embed_delay_seconds` before sending a fallback embed.
+- Re-checks the original message before sending.
+- Deletes the bot reply if the original message is edited to remove the URL.
+- Deletes the bot reply if Discord later creates a native embed.
+- Extracts metadata from `<title>`, Open Graph tags, Twitter tags, and standard `description`.
+- Resolves relative image URLs against the final page URL.
+- Supports an optional public image proxy for hosts that block direct image fetches.
+- Caches metadata in memory with TTL, LRU eviction, entry count limit, and byte budget limit.
 
+## Project Layout
 
-## Dependencies
+- `Cargo.toml`
+- `src/app.rs`
+- `src/config.rs`
+- `src/fetch.rs`
+- `src/metadata.rs`
+- `src/cache.rs`
 
-This project is built using `vcpkg` for C++ dependency management.
+## Requirements
 
-- [DPP (D++ Library)](https://dpp.dev/): A lightweight C++ library for interacting with the Discord API.
-- [libcurl](https://curl.se/libcurl/): For making HTTP requests to fetch HTML content.
-- [nlohmann/json](https://github.com/nlohmann/json): For parsing and creating `config.json`.
-- [lexbor](https://github.com/lexbor/lexbor): HTML parsing (title/meta extraction). Installed via vcpkg.
-- [Catch2](https://github.com/catchorg/Catch2) (optional): Unit tests (auto-detected by CMake; installed via vcpkg when present).
-- Visual Studio 2022 (Optional / For Windows)
+- Rust toolchain
+- Cargo
 
-## Building the Project
+Install Rust with [rustup](https://rustup.rs/).
 
-### Prerequisites
-
-- CMake (version 3.22 or higher)
-- Ninja: The build presets use the Ninja build system.
-  - **Linux**: Install via your package manager (e.g., `sudo apt install ninja-build` on Debian/Ubuntu).
-    - Also install `build-essential` and `pkg-config` on Debian/Ubuntu: `sudo apt install -y build-essential pkg-config`
-  - **Windows**: Ninja is included with the "C++ CMake tools for Windows" component in the Visual Studio Installer.
-    - If you don't have VS, you need to install Ninja manually.
-- A modern C++ compiler (e.g., Visual Studio 2022 on Windows, GCC/Clang on Linux)
-- [vcpkg](https://github.com/microsoft/vcpkg)
-
-### 1. Clone the Repository
+## Build
 
 ```bash
-git clone https://github.com/Ayumudayo/LinkEmbed.git
-cd LinkEmbed
+cargo build --release
 ```
 
-### 2. Setup vcpkg
-
-This project uses `vcpkg.json` to declare its dependencies. `vcpkg` will automatically install them when you run the CMake configuration step.
-
-- **On Windows:** The `CMakePresets.json` file is configured to find `vcpkg` at the default Visual Studio installation path. If your path is different, please modify the preset file.
-- **On Linux:** You must set the `VCPKG_ROOT` environment variable to point to your `vcpkg` installation directory.
-  ```bash
-  export VCPKG_ROOT=/path/to/your/vcpkg
-  # Add this line to your ~/.bashrc or ~/.zshrc to make it permanent
-  ```
-
-### 3. Configure and Build using Presets
-
-This project uses `CMakePresets.json` for easy configuration and building. You can configure and build from the command line or directly from a compatible IDE like Visual Studio.
+## Run
 
 ```bash
-# 1. Configure the project using a preset (e.g., for Windows Release)
-cmake --preset windows-x64-release
-
-# 2. Build the project using the same preset
-cmake --build --preset windows-x64-release
+cargo run --release
 ```
 
-**Available Presets:**
-- `windows-x64-release` (Recommended for Windows)
-- `windows-x64-debug`
-- `linux-x64-release` (Recommended for Linux)
-- `linux-x64-debug`
+On first launch, the bot creates `config/config.json` next to the compiled binary and exits.
 
-The final executable will be located in the `build/<preset-name>/` directory.
+For a release build run from the repository root, that file will be created at:
 
-### Linux Quick Start (with checks)
-
-```bash
-# 0) Install system packages (Debian/Ubuntu):
-sudo apt update && sudo apt install -y build-essential ninja-build pkg-config
-
-# 1) Set vcpkg path
-export VCPKG_ROOT=/path/to/vcpkg
-
-# 2) Run environment check (optional but recommended)
-./scripts/check_linux_env.sh
-
-# 3) Build via preset helper script
-./scripts/build_release.sh
+```text
+target/release/config/config.json
 ```
 
-If the environment check fails, follow the printed hints and retry.
-
-## Tests
-
-Basic unit tests are available and built only if Catch2 is installed.
-
-Build and run tests using presets:
-
-```bash
-# Windows
-cmake --preset windows-x64-release -D CMAKE_TOOLCHAIN_FILE="C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake"
-cmake --build --preset windows-x64-release
-ctest --preset windows-x64-release --output-on-failure -V
-
-# Linux
-export VCPKG_ROOT=/path/to/vcpkg
-./scripts/check_linux_env.sh
-cmake --preset linux-x64-release
-cmake --build --preset linux-x64-release
-ctest --preset linux-x64-release --output-on-failure -V
-```
-
-Notes:
-- Console output shows successes and durations for each test.
-- You can run the test binary directly with custom reporters, e.g. `./linkembed_tests --reporter console --success --durations yes`.
+Set `bot_token` and start the bot again.
 
 ## Configuration
 
-The bot requires a configuration file located at `config/config.json` next to the executable (the app looks up `./config/config.json` relative to the binary).
-
-If the file does not exist on first run, the bot will create a default `config.json` for you and exit. Edit it and restart.
-
-**You must edit this file and set your bot token.** You can also control logging verbosity via `log_level`.
-
 ```json
 {
-    "bot_token": "YOUR_BOT_TOKEN_HERE",
-    "cache_ttl_minutes": 10,
-    "cache_max_size": 1000,
-    "cache_max_bytes": 33554432,
-    "embed_delay_seconds": 5,
-    "html_initial_range_bytes": 524288,
-    "html_range_growth_factor": 2,
-    "http_max_redirects": 5,
-    "http_timeout_ms": 4000,
-    "http_user_agent": "LinkEmbedBot/1.0",
-    "max_concurrency": 4,
-    "max_html_bytes": 8388608,
-    "rate_per_sec": 2,
-    "log_level": "info"
-}
-```
-- `bot_token`: Your Discord bot's token.
-- `embed_delay_seconds`: Time to wait before posting an embed, to allow Discord to create its own first.
-- `cache_ttl_minutes`: How long to cache website metadata.
-- `cache_max_size`: Maximum number of cache entries.
-- `cache_max_bytes`: Estimated memory budget in bytes for cached metadata.
-- `log_level`: One of `debug`, `info`, `warn`, `error`.
-
-### Image Proxy (to bypass Referer restrictions)
-
-Some sites (e.g., DCInside) block direct access to `og:image` when no Referer is present. To work around this without running your own server, the bot supports wrapping target image URLs with a public image proxy.
-
-Additional config keys (default-enabled):
-
-```json
-{
+  "embed_delay_seconds": 5,
+  "cache_ttl_minutes": 10,
+  "cache_max_size": 1000,
+  "cache_max_bytes": 33554432,
+  "http_timeout_ms": 4000,
+  "http_max_redirects": 5,
+  "http_user_agent": "LinkEmbedBot/1.0 (+https://github.com/Ayumudayo/LinkEmbed; Discord link preview bot)",
+  "max_concurrency": 0,
+  "rate_per_sec": 2.0,
+  "max_html_bytes": 8388608,
+  "html_initial_range_bytes": 524288,
+  "html_range_growth_factor": 2.0,
+  "bot_token": "YOUR_BOT_TOKEN_HERE",
+  "log_level": "info",
   "image_proxy_enabled": true,
   "image_proxy_base": "https://images.weserv.nl",
   "image_proxy_query": "w=1200&h=630&fit=inside",
@@ -172,43 +84,82 @@ Additional config keys (default-enabled):
 }
 ```
 
-When metadata extraction finds an image URL whose host includes any of `image_proxy_hosts` (or whose path contains `viewimage.php`), the bot rewrites it to:
+Notes:
 
-`<image_proxy_base>?url=<percent-encoded-original>&<image_proxy_query>`
+- `max_concurrency = 0` means half of the available CPU cores.
+- `http_user_agent` should stay explicit and stable.
+- `image_proxy_*` is only used for image hosts that need a proxy workaround.
 
-You can turn this off by setting `image_proxy_enabled` to `false`.
+## PM2
 
-### Logging
-
-- Console: Logs are printed to stdout with timestamp and level.
-- Files: Logs are also written to `logs/YYYY-MM-DD.log` in the executable directory.
-- Rotation: The logger automatically switches to a new file at midnight (based on local time).
-
-## Running the Bot
-
-After building the project, you can run the bot directly from the project root:
+`ecosystem.config.js` points to the Rust release binary:
 
 ```bash
-# On Windows (using CMake preset)
-./build/windows-x64-release/LinkEmbed.exe
-
-# On Linux (using CMake preset)
-./build/linux-x64-release/LinkEmbed
+pm2 start ecosystem.config.js
 ```
 
-## Troubleshooting (Linux)
+## CI
 
-- Missing `VCPKG_ROOT` or toolchain not found
-  - Ensure `export VCPKG_ROOT=/path/to/vcpkg` and that `${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake` exists.
+GitHub Actions now runs `cargo test` on Linux and Windows in `.github/workflows/pr_ci.yml`.
 
-- lexbor not found during configure
-  - Install `pkg-config` (`sudo apt install -y pkg-config`) and then try again.
-  - Check if `pkg-config --cflags --libs lexbor` works; if not, vcpkg may not have generated a `.pc` file — the CMake script now falls back to vcpkg include/lib hints.
-  - Make sure you are using the vcpkg toolchain via the provided presets.
+## Removing The Old C++ Bot On Linux
 
-- Old CMake on legacy distros
-  - CMake >= 3.22 is recommended. Consider upgrading (e.g., `sudo snap install cmake --classic`).
+If you previously deployed the legacy C++ bot, remove it before switching production traffic to the Rust bot.
+
+### 1. Stop the running process
+
+If you used PM2:
+
+```bash
+pm2 delete LinkEmbed-Bot
+```
+
+If you started it manually:
+
+```bash
+pkill -f '/LinkEmbed$'
+```
+
+If you wrapped it in a service manager, stop that service first.
+
+### 2. Remove the old C++ build outputs
+
+From the repository root:
+
+```bash
+rm -rf build
+rm -rf vcpkg_installed .vcpkg_cache vcpkg_cache
+```
+
+### 3. Remove old helper files you no longer need
+
+```bash
+rm -f ecosystem.config.js.old
+rm -rf cmake config scripts tests
+```
+
+Only do this if you still have those legacy directories on the Linux host.
+
+### 4. Build and start the Rust bot
+
+```bash
+cargo build --release
+./target/release/linkembed
+```
+
+After the first run creates `target/release/config/config.json`, edit the token and restart:
+
+```bash
+./target/release/linkembed
+```
+
+### 5. Optional: PM2 for the Rust bot
+
+```bash
+pm2 start ecosystem.config.js
+pm2 save
+```
 
 ## License
 
-This project is licensed under the terms of the `LICENSE.txt` file.
+This project is licensed under `LICENSE.txt`.

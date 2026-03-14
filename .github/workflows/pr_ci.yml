@@ -3,25 +3,18 @@ name: Pull Request CI
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    branches: [ "main", "master" ]
-  # Manual trigger
+    branches: ["main", "master"]
   workflow_dispatch:
 
 permissions:
   contents: read
-  actions: write
 
-# Concurrency to reduce cache key reservation conflicts
 concurrency:
   group: pr-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
-    env:
-      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
-      VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/.vcpkg_cache,readwrite
-      VCPKG_FEATURE_FLAGS: manifests,binarycaching
+  test:
     strategy:
       fail-fast: false
       matrix:
@@ -30,121 +23,22 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Extract vcpkg builtin baseline
-      id: vcpkg-baseline
-      shell: bash
-      run: |
-        set -euo pipefail
-        # Extract 40-hex builtin-baseline from vcpkg.json
-        baseline=$(grep -oE '"builtin-baseline"\s*:\s*"[0-9a-f]{40}"' vcpkg.json | sed -E 's/.*"([0-9a-f]{40})".*/\1/')
-        if [ -z "${baseline}" ]; then
-          echo "Failed to extract builtin-baseline from vcpkg.json" >&2
-          exit 1
-        fi
-        echo "vcpkg builtin-baseline: ${baseline}"
-        echo "baseline=${baseline}" >> "$GITHUB_OUTPUT"
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
 
-    - name: Set up MSVC (Windows)
-      if: runner.os == 'Windows'
-      uses: ilammy/msvc-dev-cmd@v1
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
 
-    # Derive a cache key seed from the MSVC toolset version on Windows.
-    # This avoids repeated vcpkg rebuilds when the VS toolset updates,
-    # and ensures updated binaries get uploaded instead of hitting an old primary key.
-    - name: Compute toolchain cache key (Windows)
-      if: runner.os == 'Windows'
-      shell: bash
-      run: |
-        set -euo pipefail
-        # VCToolsVersion is set by msvc-dev-cmd
-        echo "TOOLCHAIN_KEY=msvc-${VCToolsVersion:-unknown}" >> "$GITHUB_ENV"
-
-    - name: Install Ninja (Windows)
-      if: runner.os == 'Windows'
-      run: choco install ninja --no-progress -y
-      shell: powershell
-
-    - name: Setup vcpkg
-      uses: actions/checkout@v4
-      with:
-        repository: microsoft/vcpkg
-        path: vcpkg
-        # Pin vcpkg to the project's builtin-baseline for reproducibility and cache hits
-        ref: ${{ steps.vcpkg-baseline.outputs.baseline }}
-        fetch-depth: 0
-
-    # On Windows, MSVC setup may override VCPKG_ROOT to the Visual Studio system vcpkg path.
-    # If cache paths point outside the workspace, actions/cache fails path validation.
-    # Force VCPKG_ROOT to the workspace path for consistent caching.
-    - name: Force VCPKG_ROOT to workspace
-      shell: bash
-      run: echo "VCPKG_ROOT=${GITHUB_WORKSPACE}/vcpkg" >> "$GITHUB_ENV"
-
-    - name: Bootstrap vcpkg
-      run: ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
-      shell: bash
-      if: runner.os == 'Linux'
-
-    - name: Install build tools (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y ninja-build pkg-config build-essential
-      shell: bash
-
-    - name: Bootstrap vcpkg (Windows)
-      run: .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
-      shell: cmd
-      if: runner.os == 'Windows'
-
-    - name: Cache vcpkg binaries (files backend)
-      uses: actions/cache@v4
-      with:
-        path: ${{ github.workspace }}/.vcpkg_cache
-        # Keyed by OS and vcpkg manifest baseline (vcpkg.json). Avoid tying to vcpkg repo HEAD to improve hit rate.
-        key: ${{ runner.os }}-vcpkg-files-${{ env.TOOLCHAIN_KEY }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
-        restore-keys: |
-          ${{ runner.os }}-vcpkg-files-
-
-    - name: Cache vcpkg downloads
-      uses: actions/cache@v4
-      with:
-        # Use a workspace-local path to avoid path validation errors
-        path: ${{ github.workspace }}/vcpkg/downloads
-        key: ${{ runner.os }}-vcpkg-downloads-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
-        restore-keys: |
-          ${{ runner.os }}-vcpkg-downloads-
-
-    - name: Configure, Build, and Test (Linux)
-      if: runner.os == 'Linux'
-      shell: bash
-      run: |
-        cmake --preset linux-x64-release
-        cmake --build --preset linux-x64-release
-        ctest --preset linux-x64-release
-
-    - name: Configure (Windows)
-      if: runner.os == 'Windows'
-      shell: bash
-      run: |
-        set -euo pipefail
-        cmake --preset windows-x64-release
-
-    - name: Build (Windows)
-      if: runner.os == 'Windows'
-      shell: bash
-      run: |
-        set -euo pipefail
-        cmake --build --preset windows-x64-release --parallel
-
-    - name: Test (Windows)
-      if: runner.os == 'Windows'
-      shell: bash
-      env:
-        CTEST_OUTPUT_ON_FAILURE: 1
-      run: |
-        set -euo pipefail
-        ctest --preset windows-x64-release --output-on-failure -V
+      - name: Run tests
+        run: cargo test
