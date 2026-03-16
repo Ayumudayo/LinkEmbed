@@ -18,7 +18,7 @@ pub fn parse_metadata(html: &str) -> Option<Metadata> {
         if let Some(handle) = titles.next() {
             if let Some(node) = handle.get(parser) {
                 if let Some(tag) = node.as_tag() {
-                    fallback_title = tag.inner_text(parser).trim().to_string();
+                    fallback_title = decode_text(tag.inner_text(parser).trim());
                 }
             }
         }
@@ -80,8 +80,12 @@ fn attribute(tag: &tl::HTMLTag<'_>, key: &str) -> Option<String> {
     tag.attributes()
         .get(key)
         .flatten()
-        .map(|value| value.as_utf8_str().trim().to_string())
+        .map(|value| decode_text(value.as_utf8_str().trim()))
         .filter(|value| !value.is_empty())
+}
+
+fn decode_text(value: &str) -> String {
+    html_escape::decode_html_entities(value).into_owned()
 }
 
 #[cfg(test)]
@@ -111,5 +115,25 @@ mod tests {
                 site_name: "Example".to_string(),
             }
         );
+    }
+
+    #[test]
+    fn decodes_entities_and_preserves_emojis() {
+        let html = r#"
+            <html>
+              <head>
+                <meta property="og:title" content="Tom &amp; Jerry &quot;Movie&quot; &#39;Cut&#39;" />
+                <meta property="og:description" content="Emoji 😄 and entity &#x1F525;" />
+                <meta property="og:image" content="https://example.com/img.png?a=1&amp;b=2" />
+                <meta property="og:site_name" content="Cats &amp; Dogs" />
+              </head>
+            </html>
+        "#;
+
+        let metadata = parse_metadata(html).unwrap();
+        assert_eq!(metadata.title, "Tom & Jerry \"Movie\" 'Cut'");
+        assert_eq!(metadata.description, "Emoji 😄 and entity 🔥");
+        assert_eq!(metadata.image_url, "https://example.com/img.png?a=1&b=2");
+        assert_eq!(metadata.site_name, "Cats & Dogs");
     }
 }
