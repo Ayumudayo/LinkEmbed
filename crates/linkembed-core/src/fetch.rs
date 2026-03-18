@@ -6,7 +6,6 @@ pub struct FetchResult {
     pub status_code: u16,
     pub error: Option<String>,
     pub effective_url: String,
-    pub truncated: bool,
 }
 
 pub async fn fetch_html(
@@ -28,14 +27,12 @@ pub async fn fetch_html(
                 status_code: 0,
                 error: Some(error.to_string()),
                 effective_url: String::new(),
-                truncated: false,
             };
         }
     };
 
     let status_code = response.status().as_u16();
     let effective_url = response.url().to_string();
-    let mut truncated = false;
     let mut content = Vec::with_capacity(attempt_max_bytes.min(64 * 1024));
     let mut response = response;
 
@@ -43,7 +40,6 @@ pub async fn fetch_html(
         match response.chunk().await {
             Ok(Some(chunk)) => {
                 if content.len() >= attempt_max_bytes {
-                    truncated = true;
                     break;
                 }
 
@@ -52,7 +48,6 @@ pub async fn fetch_html(
                 content.extend_from_slice(&chunk[..to_copy]);
 
                 if to_copy < chunk.len() {
-                    truncated = true;
                     break;
                 }
             }
@@ -63,7 +58,6 @@ pub async fn fetch_html(
                     status_code,
                     error: Some(error.to_string()),
                     effective_url,
-                    truncated,
                 };
             }
         }
@@ -74,6 +68,5 @@ pub async fn fetch_html(
         status_code,
         error: None,
         effective_url,
-        truncated,
     }
 }

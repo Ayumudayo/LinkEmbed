@@ -691,13 +691,22 @@ name = "linkembed"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "html-escape",
- "regex",
- "reqwest",
+ "linkembed-core",
  "serde",
  "serde_json",
  "serenity",
  "time",
+ "tokio",
+]
+
+[[package]]
+name = "linkembed-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "html-escape",
+ "regex",
+ "reqwest",
  "tl",
  "tokio",
 ]

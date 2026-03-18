@@ -1,6 +1,6 @@
 use regex::Regex;
 
-use crate::config::Config;
+use crate::engine::ImageProxyConfig;
 
 pub fn extract_urls(text: &str) -> Vec<String> {
     static URL_RE: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
@@ -48,8 +48,8 @@ pub fn resolve_against(base_url: &str, candidate: &str) -> String {
     }
 }
 
-pub fn proxy_image_if_needed(config: &Config, image_url: &str) -> String {
-    if image_url.is_empty() || !config.image_proxy_enabled {
+pub fn proxy_image_if_needed(config: &ImageProxyConfig, image_url: &str) -> String {
+    if image_url.is_empty() || !config.enabled {
         return image_url.to_string();
     }
 
@@ -59,7 +59,7 @@ pub fn proxy_image_if_needed(config: &Config, image_url: &str) -> String {
     }
 
     let matched = config
-        .image_proxy_hosts
+        .hosts
         .iter()
         .any(|pattern| !pattern.is_empty() && host.contains(&pattern.to_ascii_lowercase()))
         || image_url.contains("viewimage.php");
@@ -68,10 +68,10 @@ pub fn proxy_image_if_needed(config: &Config, image_url: &str) -> String {
         return image_url.to_string();
     }
 
-    let mut base = if config.image_proxy_base.is_empty() {
+    let mut base = if config.base.is_empty() {
         "https://images.weserv.nl".to_string()
     } else {
-        config.image_proxy_base.clone()
+        config.base.clone()
     };
 
     while base.ends_with('/') {
@@ -79,21 +79,12 @@ pub fn proxy_image_if_needed(config: &Config, image_url: &str) -> String {
     }
 
     let mut proxied = format!("{base}?url={}", url_encode_all(image_url));
-    if !config.image_proxy_query.is_empty() {
+    if !config.query.is_empty() {
         proxied.push('&');
-        proxied.push_str(&config.image_proxy_query);
+        proxied.push_str(&config.query);
     }
 
     proxied
-}
-
-pub fn display_host(url: &str) -> Option<String> {
-    let host = extract_host_lower(url);
-    if host.is_empty() {
-        None
-    } else {
-        Some(host.strip_prefix("www.").unwrap_or(&host).to_string())
-    }
 }
 
 fn clean_url(mut value: String) -> String {

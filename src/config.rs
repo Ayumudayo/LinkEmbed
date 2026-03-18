@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
+use linkembed_core::{ImageProxyConfig, PreviewEngineConfig};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
@@ -53,6 +54,29 @@ impl Default for Config {
             image_proxy_base: "https://images.weserv.nl".to_string(),
             image_proxy_query: "w=1200&h=630&fit=inside".to_string(),
             image_proxy_hosts: vec!["dcinside.co.kr".to_string()],
+        }
+    }
+}
+
+impl Config {
+    pub fn preview_engine_config(&self) -> PreviewEngineConfig {
+        PreviewEngineConfig {
+            cache_ttl_minutes: self.cache_ttl_minutes,
+            cache_max_size: self.cache_max_size,
+            cache_max_bytes: self.cache_max_bytes,
+            http_timeout_ms: self.http_timeout_ms,
+            http_max_redirects: self.http_max_redirects,
+            http_user_agent: self.http_user_agent.clone(),
+            rate_per_sec: self.rate_per_sec,
+            max_html_bytes: self.max_html_bytes,
+            html_initial_range_bytes: self.html_initial_range_bytes,
+            html_range_growth_factor: self.html_range_growth_factor,
+            image_proxy: ImageProxyConfig {
+                enabled: self.image_proxy_enabled,
+                base: self.image_proxy_base.clone(),
+                query: self.image_proxy_query.clone(),
+                hosts: self.image_proxy_hosts.clone(),
+            },
         }
     }
 }

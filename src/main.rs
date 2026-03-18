@@ -1,18 +1,7 @@
-mod app;
-mod cache;
-mod config;
-mod fetch;
-mod logger;
-mod metadata;
-mod rate_limiter;
-mod url_util;
-
 use std::path::PathBuf;
 
 use anyhow::Result;
-use app::App;
-use config::LoadConfigResult;
-use logger::{LogLevel, Logger};
+use linkembed::{config_path, load_or_create, App, LoadConfigResult, LogLevel, Logger};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -24,7 +13,7 @@ async fn main() -> Result<()> {
 
     let logger = Logger::new(&exe_dir, LogLevel::Info)?;
 
-    let config = match config::load_or_create(&exe_dir)? {
+    let config = match load_or_create(&exe_dir)? {
         LoadConfigResult::CreatedDefault(path) => {
             logger.log(
                 LogLevel::Warn,
@@ -41,7 +30,7 @@ async fn main() -> Result<()> {
     logger.set_min_level(LogLevel::from_config(&config.log_level));
     logger.log(
         LogLevel::Info,
-        format!("Configuration loaded from: {}", config::config_path(&exe_dir).display()),
+        format!("Configuration loaded from: {}", config_path(&exe_dir).display()),
     );
 
     let app = App::new(exe_dir, config, logger)?;
