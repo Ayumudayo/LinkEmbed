@@ -143,7 +143,7 @@ pm2 logs LinkEmbed-Bot
 pm2 delete LinkEmbed-Bot
 ```
 
-### Cross-build On This PC And Deploy To Raspberry Pi
+### Cross-build On Your PC And Deploy To Remote server (eg. Ubuntu Server)
 
 If you do not want to compile on the Raspberry Pi itself, build an `aarch64-unknown-linux-gnu` binary on this machine and push it over SSH.
 
@@ -184,76 +184,6 @@ Optional flags:
 The deploy script stages a compact bundle under `output/rpi-aarch64/`, uploads it as a single archive, extracts it remotely, and starts or restarts `pm2`.
 If `target/release/config/config.json` does not exist on the target yet, the post-deploy step runs the binary once to generate the default config and stops so you can fill `bot_token`.
 If you configure SSH key authentication and pass `--key` / `-KeyPath` (or set `RPI_SSH_KEY`), repeated password prompts are eliminated.
-
-## CI
-
-GitHub Actions now runs `cargo test --workspace` on Linux and Windows in `.github/workflows/pr_ci.yml`.
-
-## Removing The Old C++ Bot On Linux
-
-If you previously deployed the legacy C++ bot, remove it before switching production traffic to the Rust bot.
-
-### 1. Stop the running process
-
-If you used PM2:
-
-```bash
-pm2 delete LinkEmbed-Bot
-```
-
-If you started it manually:
-
-```bash
-pkill -f '/LinkEmbed$'
-```
-
-If you wrapped it in a service manager, stop that service first.
-
-### 2. Remove the old C++ build outputs
-
-From the repository root:
-
-```bash
-rm -rf build
-rm -rf vcpkg_installed .vcpkg_cache vcpkg_cache
-```
-
-### 3. Remove old helper files you no longer need
-
-```bash
-rm -f ecosystem.config.js.old
-rm -rf cmake config scripts tests
-```
-
-Only do this if you still have those legacy directories on the Linux host.
-
-If you want a guided cleanup first, use:
-
-```bash
-./scripts/remove_vcpkg_linux.sh
-./scripts/remove_vcpkg_linux.sh --apply
-./scripts/remove_vcpkg_linux.sh --apply --purge-shell
-```
-
-### 4. Build and start the Rust bot
-
-```bash
-cargo build --release
-./target/release/linkembed
-```
-
-After the first run creates `target/release/config/config.json`, edit the token and restart:
-
-```bash
-./target/release/linkembed
-```
-
-### 5. Optional: PM2 for the Rust bot
-
-```bash
-pm2 start ecosystem.config.js
-pm2 save
-```
 
 ## License
 
