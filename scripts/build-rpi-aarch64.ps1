@@ -1,0 +1,81 @@
+param()
+
+$ErrorActionPreference = "Stop"
+
+$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$TargetTriple = "aarch64-unknown-linux-gnu"
+$StageDir = Join-Path $RepoRoot "output\rpi-aarch64"
+$ReleaseDir = Join-Path $RepoRoot "target\$TargetTriple\release"
+
+function Require-Command {
+  param([string]$Name)
+  if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
+    throw "Missing required command: $Name"
+  }
+}
+
+function Invoke-NativeQuiet {
+  param(
+    [string]$Command,
+    [string[]]$Arguments = @()
+  )
+
+  $stdoutPath = Join-Path $env:TEMP ("linkembed-native-" + [guid]::NewGuid().ToString() + ".stdout.log")
+  $stderrPath = Join-Path $env:TEMP ("linkembed-native-" + [guid]::NewGuid().ToString() + ".stderr.log")
+  try {
+    $process = Start-Process -FilePath $Command `
+      -ArgumentList $Arguments `
+      -NoNewWindow `
+      -Wait `
+      -PassThru `
+      -RedirectStandardOutput $stdoutPath `
+      -RedirectStandardError $stderrPath
+    return $process.ExitCode
+  }
+  finally {
+    if (Test-Path $stdoutPath) {
+      Remove-Item $stdoutPath -Force -ErrorAction SilentlyContinue
+    }
+    if (Test-Path $stderrPath) {
+      Remove-Item $stderrPath -Force -ErrorAction SilentlyContinue
+    }
+  }
+}
+
+Require-Command rustup
+Require-Command cargo
+Require-Command zig
+Require-Command cargo-zigbuild
+
+if ((Invoke-NativeQuiet "cargo-zigbuild" @("--version")) -ne 0) {
+  throw "cargo-zigbuild is not installed. Run: cargo install cargo-zigbuild"
+}
+
+if ((Invoke-NativeQuiet "rustup" @("target", "add", $TargetTriple)) -ne 0) {
+  throw "Failed to ensure Rust target $TargetTriple is installed."
+}
+
+Push-Location $RepoRoot
+try {
+  & cargo zigbuild --release --target $TargetTriple -p linkembed --bin linkembed
+  if ($LASTEXITCODE -ne 0) {
+    throw "cargo zigbuild failed."
+  }
+}
+finally {
+  Pop-Location
+}
+
+if (Test-Path $StageDir) {
+  Remove-Item $StageDir -Recurse -Force
+}
+New-Item -ItemType Directory -Force -Path (Join-Path $StageDir "target\release") | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $StageDir "scripts") | Out-Null
+
+Copy-Item (Join-Path $RepoRoot "ecosystem.config.js") (Join-Path $StageDir "ecosystem.config.js") -Force
+Copy-Item (Join-Path $RepoRoot "scripts\pm2_start.sh") (Join-Path $StageDir "scripts\pm2_start.sh") -Force
+Copy-Item (Join-Path $RepoRoot "scripts\pm2_restart.sh") (Join-Path $StageDir "scripts\pm2_restart.sh") -Force
+Copy-Item (Join-Path $RepoRoot "scripts\remote-rpi-postdeploy.sh") (Join-Path $StageDir "scripts\remote-rpi-postdeploy.sh") -Force
+Copy-Item (Join-Path $ReleaseDir "linkembed") (Join-Path $StageDir "target\release\linkembed") -Force
+
+Write-Host "Staged Raspberry Pi deployment bundle at $StageDir"
