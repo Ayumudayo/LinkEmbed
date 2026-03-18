@@ -23,12 +23,11 @@ Rust Discord bot that watches messages for URLs, waits briefly for Discord's nat
 
 ## Project Layout
 
-- `Cargo.toml`
-- `src/app.rs`
+- `Cargo.toml` workspace root and bot package manifest
+- `crates/linkembed-core/` for preview fetching, parsing, caching, and URL utilities
+- `src/app/` for Discord event handling, job scheduling, reply tracking, and embed rendering
 - `src/config.rs`
-- `src/fetch.rs`
-- `src/metadata.rs`
-- `src/cache.rs`
+- `src/logger.rs`
 
 ## Requirements
 
@@ -56,6 +55,8 @@ or:
 ```bash
 cargo run --release
 ```
+
+The workspace keeps `linkembed` as the default member, so these commands still build and run the same bot binary from the repository root.
 
 On first launch, the bot creates `config/config.json` next to the compiled binary and exits.
 
@@ -109,9 +110,84 @@ Notes:
 
 These scripts do not build the project. Build first, then start or restart PM2.
 
+## Raspberry Pi / PM2
+
+For a Raspberry Pi or Ubuntu-style server where you want to keep the bot under `pm2`, use the release binary and PM2 helpers.
+
+1. Build the release binary:
+
+```bash
+./scripts/build_release.sh
+```
+
+2. Run it once to generate the default config:
+
+```bash
+./target/release/linkembed
+```
+
+3. Edit `target/release/config/config.json` and set `bot_token`.
+
+4. Start the long-running bot with `pm2`:
+
+```bash
+./scripts/pm2_start.sh
+```
+
+Useful commands:
+
+```bash
+pm2 status LinkEmbed-Bot
+pm2 logs LinkEmbed-Bot
+./scripts/pm2_restart.sh
+pm2 delete LinkEmbed-Bot
+```
+
+### Cross-build On This PC And Deploy To Raspberry Pi
+
+If you do not want to compile on the Raspberry Pi itself, build an `aarch64-unknown-linux-gnu` binary on this machine and push it over SSH.
+
+Prerequisites on this machine:
+
+- `zig` on `PATH`
+- `cargo-zigbuild` installed:
+  - `cargo install cargo-zigbuild`
+- SSH access to the Raspberry Pi
+
+Build a deployment bundle:
+
+```powershell
+./scripts/build-rpi-aarch64.ps1
+```
+
+```bash
+./scripts/build-rpi-aarch64.sh
+```
+
+Deploy and restart remotely:
+
+```powershell
+./scripts/deploy-rpi-aarch64.ps1 -RemoteHost <pi-host> -RemoteUser <pi-user>
+```
+
+```bash
+./scripts/deploy-rpi-aarch64.sh --host <pi-host> --user <pi-user>
+```
+
+Optional flags:
+
+- `--skip-build` / `-SkipBuild`
+- `--port` / `-Port`
+- `--app-dir` / `-AppDir`
+- `--key` / `-KeyPath`
+
+The deploy script stages a compact bundle under `output/rpi-aarch64/`, uploads it as a single archive, extracts it remotely, and starts or restarts `pm2`.
+If `target/release/config/config.json` does not exist on the target yet, the post-deploy step runs the binary once to generate the default config and stops so you can fill `bot_token`.
+If you configure SSH key authentication and pass `--key` / `-KeyPath` (or set `RPI_SSH_KEY`), repeated password prompts are eliminated.
+
 ## CI
 
-GitHub Actions now runs `cargo test` on Linux and Windows in `.github/workflows/pr_ci.yml`.
+GitHub Actions now runs `cargo test --workspace` on Linux and Windows in `.github/workflows/pr_ci.yml`.
 
 ## Removing The Old C++ Bot On Linux
 
