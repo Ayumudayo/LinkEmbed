@@ -99,8 +99,8 @@ pub fn load_or_create(exe_dir: &Path) -> Result<LoadConfigResult> {
 
     let raw = fs::read_to_string(&path)
         .with_context(|| format!("Could not open config file: {}", path.display()))?;
-    let mut json_value: Value =
-        serde_json::from_str(&raw).with_context(|| format!("Invalid JSON in {}", path.display()))?;
+    let mut json_value: Value = serde_json::from_str(&raw)
+        .with_context(|| format!("Invalid JSON in {}", path.display()))?;
 
     let default_value = serde_json::to_value(Config::default())?;
     let changed = merge_missing(&mut json_value, &default_value);

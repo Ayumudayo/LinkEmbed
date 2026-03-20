@@ -113,9 +113,10 @@ impl DiscordBot {
     }
 
     async fn on_ready(&self, ready: &Ready) {
-        self.inner
-            .logger
-            .log(LogLevel::Info, format!("Bot is ready! Logged in as {}", ready.user.name));
+        self.inner.logger.log(
+            LogLevel::Info,
+            format!("Bot is ready! Logged in as {}", ready.user.name),
+        );
     }
 
     async fn on_message_create(&self, ctx: &Context, message: &Message) {
@@ -127,10 +128,9 @@ impl DiscordBot {
             return;
         };
 
-        self.inner.logger.log(
-            LogLevel::Info,
-            format!("Scheduling job for URL: {url}"),
-        );
+        self.inner
+            .logger
+            .log(LogLevel::Info, format!("Scheduling job for URL: {url}"));
         self.schedule_job(
             ctx.http.clone(),
             JobContext {
@@ -152,7 +152,10 @@ impl DiscordBot {
             return;
         }
 
-        let has_discord_embed = event.embeds.as_ref().is_some_and(|embeds| !embeds.is_empty());
+        let has_discord_embed = event
+            .embeds
+            .as_ref()
+            .is_some_and(|embeds| !embeds.is_empty());
         let latest_content = event
             .content
             .clone()
@@ -173,9 +176,10 @@ impl DiscordBot {
             } else {
                 "Message updated without URLs"
             };
-            self.inner
-                .logger
-                .log(LogLevel::Info, format!("{reason}, cancelling job for {}", event.id));
+            self.inner.logger.log(
+                LogLevel::Info,
+                format!("{reason}, cancelling job for {}", event.id),
+            );
         }
     }
 
@@ -194,9 +198,11 @@ impl DiscordBot {
     fn schedule_job(&self, http: Arc<Http>, job: JobContext) {
         let bot = self.clone();
         let job_clone = job.clone();
-        self.inner.scheduler.schedule(job.message_id, move || async move {
-            bot.process_url(http, job_clone).await;
-        });
+        self.inner
+            .scheduler
+            .schedule(job.message_id, move || async move {
+                bot.process_url(http, job_clone).await;
+            });
     }
 
     fn cancel_job(&self, message_id: MessageId) {
@@ -244,7 +250,10 @@ impl DiscordBot {
             PreviewOutcome::Skipped(PreviewSkipReason::NoMetadata) => {
                 self.inner.logger.log(
                     LogLevel::Warn,
-                    format!("Could not parse metadata within max bytes from: {}", job.url),
+                    format!(
+                        "Could not parse metadata within max bytes from: {}",
+                        job.url
+                    ),
                 );
             }
             PreviewOutcome::Skipped(PreviewSkipReason::FetchFailed {
@@ -273,7 +282,10 @@ impl DiscordBot {
         if !message.embeds.is_empty() {
             self.inner.logger.log(
                 LogLevel::Info,
-                format!("Discord already attached an embed. Skipping bot embed for: {}", job.url),
+                format!(
+                    "Discord already attached an embed. Skipping bot embed for: {}",
+                    job.url
+                ),
             );
             return;
         }
@@ -307,7 +319,10 @@ impl DiscordBot {
                 );
                 self.inner.logger.log(
                     LogLevel::Info,
-                    format!("Replied successfully to message with embed for: {}", job.url),
+                    format!(
+                        "Replied successfully to message with embed for: {}",
+                        job.url
+                    ),
                 );
             }
             Err(error) => {
@@ -368,7 +383,9 @@ impl DiscordBot {
             if let Err(error) = channel_id.delete_message(http.as_ref(), reply_id).await {
                 self.inner.logger.log(
                     LogLevel::Warn,
-                    format!("Failed to delete superseded bot reply for {original_message_id}: {error}"),
+                    format!(
+                        "Failed to delete superseded bot reply for {original_message_id}: {error}"
+                    ),
                 );
             }
         }

@@ -215,6 +215,8 @@ mod tests {
             resolve_against(base, "img/a.png"),
             "https://example.com/path/img/a.png"
         );
-        assert!(resolve_against("https://example.com", "img.png").starts_with("https://example.com/"));
+        assert!(
+            resolve_against("https://example.com", "img.png").starts_with("https://example.com/")
+        );
     }
 }

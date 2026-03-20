@@ -43,13 +43,18 @@ pub fn parse_metadata(html: &str) -> Option<Metadata> {
             };
 
             match key.as_str() {
-                "og:title" | "twitter:title" if metadata.title.is_empty() => metadata.title = content,
+                "og:title" | "twitter:title" if metadata.title.is_empty() => {
+                    metadata.title = content
+                }
                 "og:description" | "twitter:description" | "description"
                     if metadata.description.is_empty() =>
                 {
                     metadata.description = content
                 }
-                "og:image" | "og:image:url" | "og:image:secure_url" | "twitter:image"
+                "og:image"
+                | "og:image:url"
+                | "og:image:secure_url"
+                | "twitter:image"
                 | "twitter:image:src"
                     if metadata.image_url.is_empty() =>
                 {

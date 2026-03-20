@@ -27,15 +27,14 @@ impl ReplyTracker {
         original_message_id: MessageId,
         expected_reply_id: MessageId,
     ) -> Option<MessageId> {
-        self.inner
-            .lock()
-            .ok()
-            .and_then(|mut replies| match replies.get(&original_message_id).copied() {
+        self.inner.lock().ok().and_then(|mut replies| {
+            match replies.get(&original_message_id).copied() {
                 Some(current_id) if current_id == expected_reply_id => {
                     replies.remove(&original_message_id)
                 }
                 _ => None,
-            })
+            }
+        })
     }
 }
 
@@ -50,7 +49,10 @@ mod tests {
         let tracker = ReplyTracker::default();
         tracker.remember_reply(MessageId::new(1), MessageId::new(2));
 
-        assert_eq!(tracker.take_reply(MessageId::new(1)), Some(MessageId::new(2)));
+        assert_eq!(
+            tracker.take_reply(MessageId::new(1)),
+            Some(MessageId::new(2))
+        );
         assert_eq!(tracker.take_reply(MessageId::new(1)), None);
     }
 
@@ -63,6 +65,9 @@ mod tests {
             tracker.take_reply_if_matches(MessageId::new(1), MessageId::new(9)),
             None
         );
-        assert_eq!(tracker.take_reply(MessageId::new(1)), Some(MessageId::new(2)));
+        assert_eq!(
+            tracker.take_reply(MessageId::new(1)),
+            Some(MessageId::new(2))
+        );
     }
 }

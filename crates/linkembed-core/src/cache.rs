@@ -198,6 +198,9 @@ mod tests {
         cache.put("http://s3", medium.clone());
         assert!(cache.get("http://s1").is_none());
         assert!(cache.get("http://s2").is_none());
-        assert_eq!(cache.get("http://s3").unwrap().description, medium.description);
+        assert_eq!(
+            cache.get("http://s3").unwrap().description,
+            medium.description
+        );
     }
 }

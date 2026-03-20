@@ -151,7 +151,7 @@ impl PreviewEngine {
 
             let grown = ((attempt_bytes as f64)
                 * self.inner.config.html_range_growth_factor.max(1.0))
-                .floor() as usize;
+            .floor() as usize;
             attempt_bytes = grown.max(attempt_bytes + 1).min(max_html_bytes);
         }
     }
@@ -389,7 +389,10 @@ mod tests {
         let engine = PreviewEngine::new(test_config()).unwrap();
         let url = format!("{}/retry", server.base_url);
 
-        assert!(matches!(engine.resolve(&url).await, PreviewOutcome::Ready(_)));
+        assert!(matches!(
+            engine.resolve(&url).await,
+            PreviewOutcome::Ready(_)
+        ));
 
         let seen_ranges = seen_ranges.lock().unwrap();
         assert_eq!(seen_ranges.len(), 2);
@@ -444,7 +447,10 @@ mod tests {
 
         let first = format!("{}/first", server.base_url);
         let second = format!("{}/second", server.base_url);
-        assert!(matches!(engine.resolve(&first).await, PreviewOutcome::Ready(_)));
+        assert!(matches!(
+            engine.resolve(&first).await,
+            PreviewOutcome::Ready(_)
+        ));
         assert_eq!(
             engine.resolve(&second).await,
             PreviewOutcome::Skipped(PreviewSkipReason::RateLimited)

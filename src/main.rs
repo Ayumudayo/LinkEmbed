@@ -30,7 +30,10 @@ async fn main() -> Result<()> {
     logger.set_min_level(LogLevel::from_config(&config.log_level));
     logger.log(
         LogLevel::Info,
-        format!("Configuration loaded from: {}", config_path(&exe_dir).display()),
+        format!(
+            "Configuration loaded from: {}",
+            config_path(&exe_dir).display()
+        ),
     );
 
     let app = App::new(exe_dir, config, logger)?;

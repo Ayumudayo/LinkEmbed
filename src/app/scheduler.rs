@@ -62,7 +62,9 @@ impl JobScheduler {
         });
 
         if let Ok(mut scheduled_jobs) = self.inner.scheduled_jobs.lock() {
-            if let Some(existing) = scheduled_jobs.insert(message_id, ScheduledJob { token, handle }) {
+            if let Some(existing) =
+                scheduled_jobs.insert(message_id, ScheduledJob { token, handle })
+            {
                 existing.handle.abort();
             }
         }
